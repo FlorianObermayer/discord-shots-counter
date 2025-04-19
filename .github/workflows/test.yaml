@@ -1,4 +1,4 @@
-name: Discord Shots Counter CI
+name: CI
 on:
   push:
     branches:

@@ -9,12 +9,13 @@
     "node": ">=18.x"
   },
   "scripts": {
-    "start-prod": "NODE_ENV=production node --env-file=.env.production src/app.js",
-    "register-prod": "NODE_ENV=production node --env-file=.env.production src/commands.js",
+    "start-prod": "NODE_ENV=production node src/app.js",
+    "register-prod": "NODE_ENV=production node src/commands.js",
     "start": "NODE_ENV=development nodemon --env-file=.env.development src/app.js",
     "register": "NODE_ENV=development node --env-file=.env.development src/commands.js",
     "test": "NODE_ENV=test jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "ngrok": "ngrok http 3000"
   },
   "author": "Shay DeWael",
   "license": "MIT",

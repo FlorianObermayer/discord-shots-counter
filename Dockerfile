@@ -14,7 +14,8 @@ RUN npm ci --omit=dev && \
 
 # Copy and build
 COPY . .
-RUN npm run register
+ENV NODE_ENV=production
+RUN npm run register-prod
 
 # Stage 2: Run
 FROM node:slim
@@ -39,4 +40,4 @@ USER appuser
 ENV NODE_ENV=production
 EXPOSE 3000
 
-CMD ["node", "src/app.js"]
+RUN npm run start-prod

@@ -15,7 +15,7 @@ RUN npm ci --omit=dev && \
 # Copy and build
 COPY . .
 ENV NODE_ENV=production
-RUN npm run register-prod
+RUN npm run register:prod
 
 # Stage 2: Run
 FROM node:slim
@@ -40,4 +40,4 @@ USER appuser
 ENV NODE_ENV=production
 EXPOSE 3000
 
-RUN npm run start-prod
+RUN npm run start:prod

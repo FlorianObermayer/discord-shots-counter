@@ -1,16 +1,13 @@
 import dotenv from 'dotenv';
-import { existsSync } from 'fs';
 
 export function init() {
 
   const envFileName = `.env.${process.env.NODE_ENV || "development"}`
-
-  if (!existsSync(envFileName)) {
-    throw new
-      console.log(`Loading environment variables from ${envFileName}`);
-  }
   dotenv.config({ path: envFileName });
 
+  if (!process.env.APP_ID || !process.env.DISCORD_TOKEN || !process.env.PUBLIC_KEY) {
+    throw new Error('Missing required environment variables: APP_ID, DISCORD_TOKEN, PUBLIC_KEY');
+  }
   console.log(`Using environment file: ${envFileName}`);
 }
 

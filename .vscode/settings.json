@@ -1,5 +1,13 @@
 {
     "cSpell.words": [
+        "appuser",
         "Wael"
+    ],
+    "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": "explicit"
+    },
+    "eslint.validate": [
+        "javascript",
+        "json",
     ]
 }

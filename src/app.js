@@ -12,8 +12,10 @@ import { capitalize, getAllOpenShotsFormatted, deletePreviousMessage } from './u
 import { createDatabaseService } from './database.js';
 import { getRandomViolationDescription as getRandomViolationDescription, getViolations } from './violations.js';
 import usernameCache from './usernameCache.js';
-import { databasePath } from './envHelper.js';
+import { databasePath, init } from './envHelper.js';
 import { COMMANDS } from './commands.js';
+
+init();
 
 console.log('Starting server...');
 

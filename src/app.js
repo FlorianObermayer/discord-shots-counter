@@ -74,6 +74,24 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
   if (type === InteractionType.APPLICATION_COMMAND) {
     const { name } = data;
 
+    if (name == COMMANDS.SHOT_NON_INTERACTIVE_COMMAND.name) {
+      console.log(data);
+
+      const offender = data.options[0].value;
+      const violation = data.options[1].value;
+
+      await db.addShot(offender, violation);
+
+      const result = res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: `### Violation confirmed.\n<@${offender}> has to take a shot for **${capitalize(violation)}**\n\n> ${getRandomViolationDescription(violation)}.`,
+        }
+      });
+
+      return result;
+    }
+
     if (name === COMMANDS.REDEEM_SHOT_COMMAND.name) {
       // redeem 1 shot for the user
       const offender = req.body.member.user.id;

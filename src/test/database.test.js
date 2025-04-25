@@ -1,7 +1,7 @@
 'use strict';
 import { describe, test, expect } from '@jest/globals';
 
-import { createDatabaseService, dbInMemory } from '../database.js';
+import { createDatabaseService } from '../database.js';
 import { getViolations } from '../violations.js';
 
 
@@ -76,11 +76,6 @@ describe('Scaffolding', () => {
         const kemurId = "232460657629462528";
         const pawnobiId = "299962313442590721";
         const flexId = "238705817422004226";
-
-        function getRandomViolationType() {
-            const violations = getViolations();
-            return violations[Math.floor(Math.random() * violations.length)];
-        }
 
         async function createShots(playerId, count) {
             for (let i = 0; i < count; i++) {

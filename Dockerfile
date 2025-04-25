@@ -14,7 +14,6 @@ RUN npm ci --omit=dev && \
 
 # Copy and build
 COPY . .
-ENV NODE_ENV=production
 RUN npm run register:prod
 
 # Stage 2: Run
@@ -37,7 +36,6 @@ RUN find /app -type d -exec chmod 755 {} + && \
     chmod 755 /app/data
 
 USER appuser
-ENV NODE_ENV=production
 EXPOSE 3000
 
 ENTRYPOINT [ "npm", "run", "start:prod" ]

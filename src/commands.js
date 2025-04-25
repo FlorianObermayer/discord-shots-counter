@@ -1,6 +1,5 @@
-import 'dotenv/config';
 import { InstallGlobalCommands } from './utils.js';
-
+import { getViolations } from './violations.js';
 
 export const COMMANDS = {
   LIST_OPEN_SHOTS_COMMAND: {
@@ -35,34 +34,38 @@ export const COMMANDS = {
     contexts: [0, 2],
   },
 
-  // const SHOT_NON_INTERACTIVE_COMMAND = {
-  //   name: 'shot',
-  //   description: 'Add a shot for a player due to a violation',
-  //   type: 1,
-  //   integration_types: [0],
-  //   contexts: [0],
-  //   options: [
-  //     {
-  //       name: 'user',
-  //       description: 'The user to add a shot for',
-  //       type: 6,
-  //       required: true,
-  //     },
-  //     {
-  //       name: 'violation_type',
-  //       description: 'The violation type',
-  //       type: 3,
-  //       required: true,
-  //       choices: [
-  //         { name: 'Violation 1', value: 'violation_1' },
-  //         { name: 'Violation 2', value: 'violation_2' },
-  //         { name: 'Violation 3', value: 'violation_3' },
-  //       ],
-  //     },
-  //   ],
-  // };
+  SHOT_NON_INTERACTIVE_COMMAND: {
+    name: 'shot_non_interactive',
+    description: 'Add a shot for a player due to a violation',
+    type: 1,
+    integration_types: [0],
+    contexts: [0],
+    options: [
+      {
+        name: 'user',
+        description: 'The user to add a shot for',
+        type: 6,
+        required: true,
+      },
+      {
+        name: 'violation_type',
+        description: 'The violation type',
+        type: 3,
+        required: true,
+        choices: getViolationChoices(),
+      },
+    ],
+  },
 
 }
 const ALL_COMMANDS = Object.values(COMMANDS);
+
+function getViolationChoices() {
+  const violations = getViolations();
+  return violations.map((violation) => ({
+    name: violation.toUpperCase(),
+    value: violation,
+  }));
+}
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);

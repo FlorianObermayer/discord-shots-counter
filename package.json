@@ -9,10 +9,10 @@
     "node": ">=18.x"
   },
   "scripts": {
-    "start": "node src/app.js",
-    "register": "node src/commands.js",
-    "dev": "nodemon src/app.js",
-    "test": "jest",
+    "start-prod": "NODE_ENV=production node src/app.js",
+    "register-prod": "NODE_ENV=production node src/commands.js",
+    "start": "NODE_ENV=development nodemon src/app.js",
+    "test": "NODE_ENV=test jest",
     "test:watch": "jest --watch"
   },
   "author": "Shay DeWael",

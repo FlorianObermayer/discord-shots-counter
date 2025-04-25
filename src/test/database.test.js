@@ -1,4 +1,3 @@
-'use strict';
 import { describe, test, expect } from '@jest/globals';
 
 import { createDatabaseService } from '../database.js';

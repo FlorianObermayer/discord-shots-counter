@@ -1,5 +1,3 @@
-'use strict';
-
 import sqlite3 from 'sqlite3';
 import { databasePath } from './envHelper.js';
 

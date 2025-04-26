@@ -1,0 +1,4 @@
+- name: Portainer Service Webhook
+  uses: newarifrh/portainer-service-webhook@v1
+  with:
+      webhook_url: ${{ secrets.PORTAINER_WEBHOOK_URL }}

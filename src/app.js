@@ -13,12 +13,29 @@ import { getRandomViolationDescription as getRandomViolationDescription, getViol
 import usernameCache from './usernameCache.js';
 import { databasePath, verifyEnv } from './envHelper.js';
 import { COMMANDS } from './commands.js';
+import { handleMotivationCommand } from './motivationCommand.js';
+import {
+  Client, IntentsBitField
+} from 'discord.js';
 
 verifyEnv();
 
 console.log('Starting server...');
 
 const db = await createDatabaseService(databasePath());
+
+async function handleShot(response, offender, violationType) {
+  await db.addShot(offender, violationType);
+
+  const result = response.send({
+    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+    data: {
+      content: `### Violation confirmed.\n<@${offender}> has to take a shot for **${capitalize(violationType)}**\n\n> ${getRandomViolationDescription(violationType)}.`,
+    }
+  });
+
+  return result;
+}
 
 async function listAllShotsChannelMessage(isPublic) {
 
@@ -44,6 +61,12 @@ async function listAllShotsChannelMessage(isPublic) {
   };
 }
 
+
+// Initialize Discord Client
+const client = new Client({
+  intents: [IntentsBitField.Flags.Guilds, IntentsBitField.Flags.GuildVoiceStates]
+});
+client.login(process.env.DISCORD_TOKEN);
 
 // Create an express app
 const app = express();
@@ -74,22 +97,18 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
   if (type === InteractionType.APPLICATION_COMMAND) {
     const { name } = data;
 
+    if (name === COMMANDS.MOTIVATE_COMMAND.name) {
+      const response = await handleMotivationCommand(req.body, client);
+      return res.send(response);
+    }
+
     if (name == COMMANDS.SHOT_NON_INTERACTIVE_COMMAND.name) {
       console.log(data);
 
       const offender = data.options[0].value;
       const violation = data.options[1].value;
 
-      await db.addShot(offender, violation);
-
-      const result = res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: `### Violation confirmed.\n<@${offender}> has to take a shot for **${capitalize(violation)}**\n\n> ${getRandomViolationDescription(violation)}.`,
-        }
-      });
-
-      return result;
+      return await handleShot(res, offender, violation);
     }
 
     if (name === COMMANDS.REDEEM_SHOT_COMMAND.name) {
@@ -253,19 +272,10 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const offender = componentId.split('=')[1].split(',')[0];
       const violation = componentId.split(',')[1].split('=')[1];
 
-      console.log('offender', offender);
-      console.log('violation', violation);
-
-      await db.addShot(offender, violation);
-
-      const result = res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: `### Violation confirmed.\n<@${offender}> has to take a shot for **${capitalize(violation)}**\n\n> ${getRandomViolationDescription(violation)}.`,
-        }
-      });
+      const result = await handleShot(res, offender, violation);
 
       await deletePreviousMessage(req.body.token, req.body.message.id);
+
       return result;
     }
 
@@ -322,3 +332,6 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 app.listen(PORT, () => {
   console.log('Listening on port', PORT);
 });
+
+
+

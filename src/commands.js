@@ -26,9 +26,9 @@ export const COMMANDS = {
     contexts: [0, 2],
   },
 
-  MOTIVATE_TTS_COMMAND: {
-    name: 'motivate_tts',
-    description: 'Motivate a player using TTS',
+  MOTIVATE_COMMAND: {
+    name: 'motivate',
+    description: 'Play a motivational audio clip',
     type: 1,
     integration_types: [0, 1],
     contexts: [0, 2],

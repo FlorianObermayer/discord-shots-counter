@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Install build dependencies (if needed for native modules)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends python3 make g++ && \
+    apt-get install -y --no-install-recommends ffmpeg python3 make g++ && \
     rm -rf /var/lib/apt/lists/*
 
 # install ffmpeg for audio processing

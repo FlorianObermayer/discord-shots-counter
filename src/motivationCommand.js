@@ -4,6 +4,7 @@ import {
 } from 'discord-interactions';
 import { resolve } from 'path';
 import fs from 'fs';
+import ffmpegPath from 'ffmpeg-static';
 
 const MOTIVATIONS_DIR = './media/audio/motivations';
 // List of your MP3 file paths
@@ -54,7 +55,12 @@ export async function handleMotivationCommand(interaction, client) {
         });
 
         const player = createAudioPlayer();
-        const resource = createAudioResource(absolutePath);
+        const resource = createAudioResource(absolutePath, {
+            inputType: 'mp3',
+            inlineVolume: true,
+            // Point to the ffmpeg-static binary
+            encoderArgs: ['-i', ffmpegPath]
+        });
 
         player.play(resource);
         connection.subscribe(player);

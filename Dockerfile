@@ -7,6 +7,9 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 make g++ && \
     rm -rf /var/lib/apt/lists/*
 
+# install ffmpeg for audio processing
+RUN apt-get update && apt-get install -y ffmpeg
+
 # Install dependencies with clean cache
 COPY package*.json ./
 RUN npm ci --omit=dev && \

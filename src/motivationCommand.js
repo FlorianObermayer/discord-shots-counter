@@ -20,7 +20,8 @@ export async function handleMotivationCommand(interaction, client) {
 
         const randomMP3 = MOTIVATION_FILES[Math.floor(Math.random() * MOTIVATION_FILES.length)];
         const connection = await audioPlayer.joinVoiceChannel(guild, voiceChannelId);
-        await audioPlayer.playAudioFile(connection, randomMP3);
+
+        audioPlayer.playAudioFile(connection, randomMP3);
 
         return {
             type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -35,7 +36,7 @@ export async function handleMotivationCommand(interaction, client) {
             type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
             data: {
                 flags: InteractionResponseFlags.EPHEMERAL,
-                content: `❌ Failed to play motivation\n\n\`\`\`${error.message}\`\`\``
+                content: `❌ Failed to play motivation\n\`\`\`${error.message}\`\`\``
             }
         };
     }

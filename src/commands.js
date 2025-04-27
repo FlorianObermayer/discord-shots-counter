@@ -57,6 +57,40 @@ export const COMMANDS = {
     ],
   },
 
+  START_RANDOM_MEMES_COMMAND: {
+    name: 'start_random_memes',
+    description: 'Start playing random memes at random intervals',
+    type: 1,
+    integration_types: [0, 1],
+    contexts: [0, 2],
+    options: [
+      {
+        name: 'min_delay',
+        description: 'Minimum delay between memes (seconds)',
+        type: 4,  // INTEGER type
+        required: false,
+        min_value: 5,
+        max_value: 300
+      },
+      {
+        name: 'max_delay',
+        description: 'Maximum delay between memes (seconds)',
+        type: 4,  // INTEGER type
+        required: false,
+        min_value: 5,
+        max_value: 300
+      }
+    ]
+  },
+
+  STOP_RANDOM_MEMES_COMMAND: {
+    name: 'stop_random_memes',
+    description: 'Stop playing random memes',
+    type: 1,
+    integration_types: [0, 1],
+    contexts: [0, 2],
+  },
+
 }
 const ALL_COMMANDS = Object.values(COMMANDS);
 

@@ -17,6 +17,7 @@ import { handleMotivationCommand } from './motivationCommand.js';
 import {
   Client, IntentsBitField
 } from 'discord.js';
+import { handleStartRandomMemes, handleStopRandomMemes } from './memeCommand.js';
 
 verifyEnv();
 
@@ -96,6 +97,19 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
    */
   if (type === InteractionType.APPLICATION_COMMAND) {
     const { name } = data;
+
+    if (name === COMMANDS.START_RANDOM_MEMES_COMMAND.name) {
+      const minDelay = data.options[0].value ?? 30; // defaults to 30 seconds
+      const maxDelay = data.options[1].value ?? 60; // defaults to 60 seconds
+
+      const response = await handleStartRandomMemes(req.body, client, minDelay, maxDelay);
+      return res.send(response);
+    }
+
+    if (name === COMMANDS.STOP_RANDOM_MEMES_COMMAND.name) {
+      const response = await handleStopRandomMemes(req.body, client);
+      return res.send(response);
+    }
 
     if (name === COMMANDS.MOTIVATE_COMMAND.name) {
       const response = await handleMotivationCommand(req.body, client);

@@ -17,13 +17,20 @@ import { handleMotivationCommand } from './motivationCommand.js';
 import {
   Client, IntentsBitField
 } from 'discord.js';
-import { handleStartRandomMemes, handleStopRandomMemes } from './memeCommand.js';
+import { getCachedOrDownloadMemes, handleMemeCommand, handleStartRandomMemes, handleStopRandomMemes } from './memeCommand.js';
 
 verifyEnv();
 
 console.log('Starting server...');
 
 const db = await createDatabaseService(databasePath());
+
+try {
+  // warm up meme cache
+  await getCachedOrDownloadMemes();
+} catch (e) {
+  console.error('Failed to warm up meme cache', e);
+}
 
 async function handleShot(response, offender, violationType) {
   await db.addShot(offender, violationType);
@@ -98,9 +105,14 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
   if (type === InteractionType.APPLICATION_COMMAND) {
     const { name } = data;
 
+    if (name === COMMANDS.MEME_COMMAND.name) {
+      const response = await handleMemeCommand(req.body, client);
+      return res.send(response);
+    }
+
     if (name === COMMANDS.START_RANDOM_MEMES_COMMAND.name) {
-      const minDelay = data.options[0].value ?? 30; // defaults to 30 seconds
-      const maxDelay = data.options[1].value ?? 60; // defaults to 60 seconds
+      const minDelay = data.options ? data.options[0]?.value || 30 : 30; // defaults to 30 seconds
+      const maxDelay = data.options ? data.options[1]?.value || 60 : 60; // defaults to 60 seconds
 
       const response = await handleStartRandomMemes(req.body, client, minDelay, maxDelay);
       return res.send(response);

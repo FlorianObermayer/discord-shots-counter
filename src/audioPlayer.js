@@ -5,9 +5,9 @@ import ffmpegPath from 'ffmpeg-static';
 import axios from 'axios';
 
 export class AudioPlayerManager {
+
     constructor() {
-        this.activeConnections = new Map();
-        this.activeIntervals = new Map();
+        this.activeTimers = new Map();
     }
 
     async joinVoiceChannel(guild, voiceChannelId) {
@@ -64,8 +64,11 @@ export class AudioPlayerManager {
         });
     }
 
-    startRandomPlayback(guild, voiceChannelId, audioSources, minDelay, maxDelay) {
-        const intervalId = setInterval(async () => {
+    async startRandomPlayback(guild, voiceChannelId, audioSources, minDelay, maxDelay) {
+        // First stop any existing playback for this channel
+        this.stopPlayback(guild.id, voiceChannelId);
+
+        const playNext = async () => {
             try {
                 const connection = await this.joinVoiceChannel(guild, voiceChannelId);
                 const randomSource = audioSources[Math.floor(Math.random() * audioSources.length)];
@@ -78,17 +81,22 @@ export class AudioPlayerManager {
             } catch (error) {
                 console.error('Playback error:', error);
             }
-        }, this.getRandomDelay(minDelay, maxDelay));
 
-        this.activeIntervals.set(`${guild.id}-${voiceChannelId}`, intervalId);
-        return intervalId;
+            // Schedule next playback with new random delay
+            const delay = this.getRandomDelay(minDelay, maxDelay) * 1000; // convert to milliseconds
+            const timer = setTimeout(() => playNext(), delay);
+            this.activeTimers.set(`${guild.id}-${voiceChannelId}`, timer);
+        };
+
+        // Start the first playback immediately
+        playNext();
     }
 
     stopPlayback(guildId, voiceChannelId) {
-        const intervalId = this.activeIntervals.get(`${guildId}-${voiceChannelId}`);
-        if (intervalId) {
-            clearInterval(intervalId);
-            this.activeIntervals.delete(`${guildId}-${voiceChannelId}`);
+        const timer = this.activeTimers.get(`${guildId}-${voiceChannelId}`);
+        if (timer) {
+            clearTimeout(timer);
+            this.activeTimers.delete(`${guildId}-${voiceChannelId}`);
         }
     }
 

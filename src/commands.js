@@ -57,6 +57,14 @@ export const COMMANDS = {
     ],
   },
 
+  MEME_COMMAND: {
+    name: 'meme',
+    description: 'Play a random meme audio clip',
+    type: 1,
+    integration_types: [0, 1],
+    contexts: [0, 2],
+  },
+
   START_RANDOM_MEMES_COMMAND: {
     name: 'start_random_memes',
     description: 'Start playing random memes at random intervals',

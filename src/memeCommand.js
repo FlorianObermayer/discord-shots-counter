@@ -7,6 +7,40 @@ const audioPlayer = new AudioPlayerManager();
 const MEME_API_URL = 'https://myinstants-api.vercel.app/best?q=de';
 const MEMES_DIR = './media/audio/memes';
 
+export async function getCachedOrDownloadMemes(count = -1) {
+    // Get memes from API
+    const response = await axios.get(MEME_API_URL);
+    const memeUrls = response.data.data.map(meme => meme.mp3);
+    const memePaths = [];
+    // download up to 10 random memes to local storage
+
+    // ensure memes directory exists
+    if (!fs.existsSync(MEMES_DIR)) {
+        fs.mkdirSync(MEMES_DIR, { recursive: true });
+    }
+
+    const filteredMemeUrls = count > 0 ? memeUrls.sort(() => 0.5 - Math.random()).slice(0, count) : memeUrls;
+    for (const meme of filteredMemeUrls) {
+        const memeResponse = await axios.get(meme, { responseType: 'stream' });
+        const fileName = meme.split('/').pop();
+        const filePath = `${MEMES_DIR}/${fileName}`;
+        // only download if file does not exist
+        if (fs.existsSync(filePath)) {
+            memePaths.push(filePath);
+            continue;
+        }
+        const writer = fs.createWriteStream(filePath);
+        memeResponse.data.pipe(writer);
+        await new Promise((resolve, reject) => {
+            writer.on('finish', resolve);
+            writer.on('error', reject);
+        });
+
+        memePaths.push(filePath);
+    }
+    return memePaths;
+}
+
 export async function handleMemeCommand(interaction, client) {
     try {
         const guild = await client.guilds.fetch(interaction.guild_id);
@@ -38,35 +72,6 @@ export async function handleMemeCommand(interaction, client) {
             }
         };
     }
-}
-
-export async function getCachedOrDownloadMemes(count = -1) {
-    // Get memes from API
-    const response = await axios.get(MEME_API_URL);
-    const memeUrls = response.data.data.map(meme => meme.mp3);
-    const memePaths = [];
-    // download up to 10 random memes to local storage
-
-    const filteredMemeUrls = count > 0 ? memeUrls.sort(() => 0.5 - Math.random()).slice(0, count) : memeUrls;
-    for (const meme of filteredMemeUrls) {
-        const memeResponse = await axios.get(meme, { responseType: 'stream' });
-        const fileName = meme.split('/').pop();
-        const filePath = `${MEMES_DIR}/${fileName}`;
-        // only download if file does not exist
-        if (fs.existsSync(filePath)) {
-            memePaths.push(filePath);
-            continue;
-        }
-        const writer = fs.createWriteStream(filePath);
-        memeResponse.data.pipe(writer);
-        await new Promise((resolve, reject) => {
-            writer.on('finish', resolve);
-            writer.on('error', reject);
-        });
-
-        memePaths.push(filePath);
-    }
-    return memePaths;
 }
 
 export async function handleStartRandomMemes(interaction, client, minDelay, maxDelay) {

@@ -17,7 +17,7 @@
     "test:watch": "jest --watch",
     "ngrok": "ngrok http 3000"
   },
-  "author": "Shay DeWael",
+  "author": "Florian Obermayer",
   "license": "MIT",
   "dependencies": {
     "@discordjs/opus": "^0.10.0",

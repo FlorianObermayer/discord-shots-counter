@@ -26,8 +26,10 @@ console.log('Starting server...');
 const db = await createDatabaseService(databasePath());
 
 try {
+  console.log('Warming up meme cache...');
   // warm up meme cache
   await getCachedOrDownloadMemes();
+  console.log('Meme cache warmed up.');
 } catch (e) {
   console.error('Failed to warm up meme cache', e);
 }

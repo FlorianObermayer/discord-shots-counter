@@ -15,7 +15,6 @@ services:
       - DISCORD_TOKEN=${DISCORD_TOKEN}
       - PUBLIC_KEY=${PUBLIC_KEY}
       - DB_PATH=/app/data/database.db
-      - MEDIA_PATH=/app/data/media 
     volumes:
       - shots_db_data:/app/data:nocopy  # Named volume with nocopy option
     user: "1001:1001"  # Matches the UID/GID in Dockerfile

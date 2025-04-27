@@ -12,3 +12,7 @@ export function isTestEnvironment() {
 export function databasePath() {
   return process.env.DB_PATH || './database.db';
 }
+
+export function mediaPath() {
+  return process.env.MEDIA_PATH || './media'
+}

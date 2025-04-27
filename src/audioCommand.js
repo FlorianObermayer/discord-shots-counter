@@ -1,14 +1,23 @@
-// motivationCommand.js
 import { InteractionResponseType, InteractionResponseFlags } from 'discord-interactions';
 import { AudioPlayerManager } from './audioPlayer.js';
 import fs from 'fs';
+import path from 'path';
+import { mediaPath } from './envHelper.js';
 
-const MOTIVATIONS_DIR = './media/audio/motivations';
-const MOTIVATION_FILES = fs.readdirSync(MOTIVATIONS_DIR).map(file => `${MOTIVATIONS_DIR}/${file}`);
+export const MOTIVATIONS_DIR = path.join(mediaPath(), '/audio/motivations');
+export const MIMIMI_DIR = path.join(mediaPath(), 'audio/mimimi');
 
 const audioPlayer = new AudioPlayerManager();
 
-export async function handleMotivationCommand(interaction, client) {
+function getRandomFilePathFromDirectory(directoryPath) {
+    const filePaths = fs.readdirSync(directoryPath).map(file => path.join(directoryPath,file));
+    if (!filePaths || filePaths.length == 0) {
+        throw new Error(`empty or non existing directory: ${directoryPath}`);
+    }
+    return filePaths[Math.floor(Math.random() * filePaths.length)];
+}
+
+export async function handleAudioCommand(interaction, client, audioSourceDirectory) {
     try {
         const guild = await client.guilds.fetch(interaction.guild_id);
         const member = await guild.members.fetch(interaction.member.user.id);
@@ -18,7 +27,7 @@ export async function handleMotivationCommand(interaction, client) {
             throw new Error('You must be in a voice channel to use this command.');
         }
 
-        const randomMP3 = MOTIVATION_FILES[Math.floor(Math.random() * MOTIVATION_FILES.length)];
+        const randomMP3 = getRandomFilePathFromDirectory(audioSourceDirectory);
         const connection = await audioPlayer.joinVoiceChannel(guild, voiceChannelId);
 
         audioPlayer.playAudioFile(connection, randomMP3);
@@ -27,16 +36,16 @@ export async function handleMotivationCommand(interaction, client) {
             type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
             data: {
                 flags: InteractionResponseFlags.EPHEMERAL,
-                content: `🎧 Playing motivation in your voice channel`
+                content: `🎧 Playing audio clip in your voice channel`
             }
         };
     } catch (error) {
-        console.error('Motivation command error:', error);
+        console.error('Audio command error:', error);
         return {
             type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
             data: {
                 flags: InteractionResponseFlags.EPHEMERAL,
-                content: `❌ Failed to play motivation\n\`\`\`${error.message}\`\`\``
+                content: `❌ Failed to play audio\n\`\`\`${error.message}\`\`\``
             }
         };
     }

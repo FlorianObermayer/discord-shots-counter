@@ -34,6 +34,14 @@ export const COMMANDS = {
     contexts: [0, 2],
   },
 
+  MIMIMI_COMMAND: {
+    name: 'mimimi',
+    description: 'Get a fitting reply for mimimi',
+    type: 1,
+    integration_types: [0, 1],
+    contexts: [0, 2],
+  },
+
   SHOT_NON_INTERACTIVE_COMMAND: {
     name: 'shot_non_interactive',
     description: 'Add a shot for a player due to a violation',

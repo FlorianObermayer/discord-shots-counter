@@ -13,11 +13,23 @@ import { getRandomViolationDescription as getRandomViolationDescription, getViol
 import usernameCache from './usernameCache.js';
 import { databasePath, verifyEnv } from './envHelper.js';
 import { COMMANDS } from './commands.js';
-import { handleMotivationCommand } from './motivationCommand.js';
+import { handleAudioCommand, MIMIMI_DIR, MOTIVATIONS_DIR } from './audioCommand.js';
 import {
   Client, IntentsBitField
 } from 'discord.js';
 import { getCachedOrDownloadMemes, handleMemeCommand, handleStartRandomMemes, handleStopRandomMemes } from './memeCommand.js';
+
+// Catch unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Rejection:', err);
+  process.exit(1);
+});
+
+// Catch uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  process.exit(1);
+});
 
 verifyEnv();
 
@@ -126,7 +138,12 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     }
 
     if (name === COMMANDS.MOTIVATE_COMMAND.name) {
-      const response = await handleMotivationCommand(req.body, client);
+      const response = await handleAudioCommand(req.body, client, MOTIVATIONS_DIR);
+      return res.send(response);
+    }
+
+    if (name === COMMANDS.MIMIMI_COMMAND.name) {
+      const response = await handleAudioCommand(req.body, client, MIMIMI_DIR);
       return res.send(response);
     }
 

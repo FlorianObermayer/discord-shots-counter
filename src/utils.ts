@@ -1,3 +1,4 @@
+import { AllCommands } from './commands';
 import { appId, discordToken } from './envHelper';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -27,14 +28,18 @@ export async function DiscordRequest(endpoint: string, options: { body?: any, me
   return res;
 }
 
-export async function InstallGlobalCommands(appId: string, commands: Command[]) {
+export async function installGlobalCommands(appId: string, commands: Command[] = AllCommands) {
   // API endpoint to overwrite global commands
   const endpoint = `applications/${appId}/commands`;
 
   try {
+    console.log(`Registering following commands: ${commands.map(it => it.name as string).join(',')}...`);
     // This is calling the bulk overwrite endpoint: https://discord.com/developers/docs/interactions/application-commands#bulk-overwrite-global-application-commands
     await DiscordRequest(endpoint, { method: 'PUT', body: commands });
+    console.log('Registering commands DONE');
+
   } catch (err) {
+    console.log('Registering commands FAILED');
     console.error(err);
   }
 }

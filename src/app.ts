@@ -8,40 +8,17 @@ import {
   ButtonStyleTypes,
   ActionRow,
 } from 'discord-interactions';
-import { capitalize, getAllOpenShotsFormatted, deletePreviousMessage } from './utils';
+import { capitalize, getAllOpenShotsFormatted, deletePreviousMessage, installGlobalCommands } from './utils';
 import { createDatabaseService, DatabaseService } from './database';
 import { getRandomViolationDescription as getRandomViolationDescription, getViolationTypes, ViolationType } from './violations';
 import usernameCache from './usernameCache';
-import { databasePath, discordToken, port, verifyEnv, publicKey } from './envHelper';
+import { databasePath, discordToken, port, verifyEnv, publicKey, appId } from './envHelper';
 import { Commands } from './commands';
 import { handleAudioCommand, MIMIMI_DIR, MOTIVATIONS_DIR } from './audioCommand';
 import {
   Client, IntentsBitField,
 } from 'discord.js';
 import { getCachedOrDownloadMemes, handleMemeCommand, handleStartRandomMemes, handleStopRandomMemes } from './memeCommand';
-
-// Helper type for the request body
-type DiscordInteractionRequest = {
-  id: string;
-  type: InteractionType;
-  data: {
-    name: string
-    options: { value: string }[]
-    custom_id?: string;
-    values: string[];
-  };
-  token: string;
-  version: number;
-  guild_id: string;
-  member: {
-    user: {
-      id: string;
-    }
-  }
-  message: {
-    id: string;
-  }
-};
 
 // Catch unhandled promise rejections
 process.on('unhandledRejection', (err) => {
@@ -57,9 +34,10 @@ process.on('uncaughtException', (err) => {
 
 verifyEnv();
 
-
 async function initializeApp() {
   console.log('Starting server...');
+
+  await installGlobalCommands(appId());
 
   const db = await createDatabaseService(databasePath());
 
@@ -129,10 +107,10 @@ const PORT = port();
  * Interactions endpoint URL where Discord will send HTTP requests
  * Parse request body and verifies incoming requests using discord-interactions package
  */
-app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req: Request<object, Response, DiscordInteractionRequest>, res: Response): Promise<void> {
-  // Interaction type and data
+app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req: Request<unknown, Response, DiscordInteractionRequest>, res: Response): Promise<void> {
+  // TODO: Figure out why type causes "unsafe-assignment error"
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   const { type, data } = req.body;
-
   //console.log('INTERACTION::body', req.body);
 
   /**

@@ -1,6 +1,4 @@
 import { ApplicationCommandOptionType, ApplicationCommandType, ApplicationIntegrationType, InteractionContextType } from 'discord.js';
-import { appId } from './envHelper.js';
-import { InstallGlobalCommands } from './utils.js';
 import { getViolationTypes } from './violations';
 
 type CommandName =
@@ -122,7 +120,7 @@ export const Commands: Record<CommandName, Command> = {
   },
 
 };
-const AllCommands: Command[] = Object.values(Commands);
+export const AllCommands: Command[] = Object.values(Commands);
 
 function getViolationChoices() {
   const violations = getViolationTypes();
@@ -131,5 +129,3 @@ function getViolationChoices() {
     value: violation,
   }));
 }
-
-void InstallGlobalCommands(appId(), AllCommands);

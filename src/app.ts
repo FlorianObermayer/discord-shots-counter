@@ -6,6 +6,7 @@ import {
   MessageComponentTypes,
   verifyKeyMiddleware,
   ButtonStyleTypes,
+  ActionRow,
 } from 'discord-interactions';
 import { capitalize, getAllOpenShotsFormatted, deletePreviousMessage } from './utils';
 import { createDatabaseService, DatabaseService } from './database';
@@ -18,6 +19,29 @@ import {
   Client, IntentsBitField,
 } from 'discord.js';
 import { getCachedOrDownloadMemes, handleMemeCommand, handleStartRandomMemes, handleStopRandomMemes } from './memeCommand';
+
+// Helper type for the request body
+type DiscordInteractionRequest = {
+  id: string;
+  type: InteractionType;
+  data: {
+    name: string
+    options: { value: string }[]
+    custom_id?: string;
+    values: string[];
+  };
+  token: string;
+  version: number;
+  guild_id: string;
+  member: {
+    user: {
+      id: string;
+    }
+  }
+  message: {
+    id: string;
+  }
+};
 
 // Catch unhandled promise rejections
 process.on('unhandledRejection', (err) => {
@@ -40,15 +64,15 @@ async function initializeApp() {
   const db = await createDatabaseService(databasePath());
 
   console.log('Warming up meme cache...');
-  getCachedOrDownloadMemes().catch((e) => {
+  void getCachedOrDownloadMemes().catch((e) => {
     console.error('Error warming up meme cache:', e);
-  }).then(_ => console.log('Meme cache warmed up.'));
+  }).then(() => console.log('Meme cache warmed up.'));
 
   return db;
 }
 
 let db: DatabaseService;
-(async () => {
+void (async () => {
   db = await initializeApp();
 })();
 
@@ -94,7 +118,7 @@ async function listAllShotsChannelMessage(isPublic: boolean) {
 const client = new Client({
   intents: [IntentsBitField.Flags.Guilds, IntentsBitField.Flags.GuildVoiceStates]
 });
-client.login(discordToken());
+void client.login(discordToken());
 
 // Create an express app
 const app = express();
@@ -105,11 +129,11 @@ const PORT = port();
  * Interactions endpoint URL where Discord will send HTTP requests
  * Parse request body and verifies incoming requests using discord-interactions package
  */
-app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req: Request, res: Response): Promise<void> {
+app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req: Request<object, Response, DiscordInteractionRequest>, res: Response): Promise<void> {
   // Interaction type and data
   const { type, data } = req.body;
 
-  console.log('INTERACTION::body', req.body);
+  //console.log('INTERACTION::body', req.body);
 
   /**
    * Handle verification requests
@@ -136,8 +160,8 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
     }
 
     if (name === Commands.START_RANDOM_MEMES_COMMAND.name) {
-      const minDelay = data.options ? data.options[0]?.value || 30 : 30; // defaults to 30 seconds
-      const maxDelay = data.options ? data.options[1]?.value || 60 : 60; // defaults to 60 seconds
+      const minDelay = Number(data.options ? data.options[0]?.value || 30 : 30); // defaults to 30 seconds
+      const maxDelay = Number(data.options ? data.options[1]?.value || 60 : 60); // defaults to 60 seconds
 
       const response = await handleStartRandomMemes(guildId, userId, client, minDelay, maxDelay);
       res.send(response);
@@ -162,11 +186,11 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
       return;
     }
 
-    if (name == Commands.SHOT_NON_INTERACTIVE_COMMAND.name) {
+    if (name === Commands.SHOT_NON_INTERACTIVE_COMMAND.name) {
       console.log(data);
 
-      const offender = data.options[0].value;
-      const violation = data.options[1].value;
+      const offender = data.options[0]?.value as string;
+      const violation = data.options[1]?.value as ViolationType;
 
       await handleShot(res, offender, violation);
       return;
@@ -179,7 +203,7 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
           flags: InteractionResponseFlags.EPHEMERAL,
-          content: `### Confirm drinking a shot`,
+          content: '### Confirm drinking a shot',
           // Selects are inside of action rows
           components: [
             {
@@ -211,7 +235,7 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
     if (name === Commands.LIST_OPEN_SHOTS_COMMAND.name) {
       // List all open shots
       res.send(await listAllShotsChannelMessage(true));
-      return
+      return;
     }
 
     // shot command
@@ -230,7 +254,7 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
                   // Value for your app to identify the select menu interactions
                   custom_id: 'offender_select',
                   // Select options - see https://discord.com/developers/docs/interactions/message-components#select-menu-object-select-option-structure
-                  placeholder: "Select the offender",
+                  placeholder: 'Select the offender',
                   min_values: 0,
                   max_values: 1,
                 },
@@ -253,9 +277,19 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
    */
   if (type === InteractionType.MESSAGE_COMPONENT) {
     // custom_id set in payload when sending message component
-    const componentId = data.custom_id;
+    const componentId = data.custom_id as string;
+
+
+    type MessageComponentResponseType = {
+      type: InteractionResponseType;
+      data: {
+        flags?: InteractionResponseFlags;
+        components: ActionRow[]
+      };
+    };
 
     if (componentId === 'offender_select') {
+
       res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
@@ -277,7 +311,7 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
                       label: capitalize(violation),
                       value: violation,
                     })),
-                  placeholder: "Select the violation",
+                  placeholder: 'Select the violation',
                   min_values: 1,
                   max_values: 1,
                 }
@@ -285,7 +319,7 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
             },
           ],
         },
-      });
+      } as MessageComponentResponseType);
 
       await deletePreviousMessage(req.body.token, req.body.message.id);
       return;
@@ -293,7 +327,7 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
 
     if (componentId.startsWith('violation_select_')) {
       const offender = componentId.split('=')[1];
-      const violation = data.values[0];
+      const violation = data.values[0] as ViolationType;
 
       res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -331,8 +365,8 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
 
     if (componentId.startsWith('accept_shot_button_')) {
       // get the associated game ID
-      const offender = componentId.split('=')[1].split(',')[0];
-      const violation = componentId.split(',')[1].split('=')[1];
+      const offender = componentId.split('=')[1]?.split(',')[0] as string;
+      const violation = componentId.split(',')[1]?.split('=')[1] as ViolationType;
 
       await handleShot(res, offender, violation);
 
@@ -369,9 +403,9 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
 
     if (componentId.startsWith('accept_redeem_button_')) {
       // get the associated game ID
-      const offender = componentId.split('=')[1].split(',')[0];
+      const offender = componentId.split('=')[1]?.split(',')[0] as string;
       const { redeemed, violationType } = await db.redeemShot(offender);
-      const content = redeemed ? `### Shot redemption confirmed.\n<@${offender}> took a shot for **${capitalize(violationType!)}**.` : `### <@${offender}> is an absolute alcoholic. They didn't have to drink but hey, enjoy! Maybe you actually start hitting the ball soon!`
+      const content = redeemed ? `### Shot redemption confirmed.\n<@${offender}> took a shot for **${capitalize(violationType!)}**.` : `### <@${offender}> is an absolute alcoholic. They didn't have to drink but hey, enjoy! Maybe you actually start hitting the ball soon!`;
 
       res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,

@@ -121,7 +121,7 @@ export const Commands: Record<CommandName, Command> = {
     contexts: [InteractionContextType.Guild, InteractionContextType.PrivateChannel],
   },
 
-}
+};
 const AllCommands: Command[] = Object.values(Commands);
 
 function getViolationChoices() {
@@ -132,4 +132,4 @@ function getViolationChoices() {
   }));
 }
 
-InstallGlobalCommands(appId(), AllCommands);
+void InstallGlobalCommands(appId(), AllCommands);

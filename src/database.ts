@@ -81,7 +81,7 @@ export class DatabaseService {
         });
     }
 
-    private async getQuery<T>(sql: string, params: any[] = []): Promise<T> {
+    private async getQuery<T>(sql: string, params: unknown[] = []): Promise<T> {
         const db = await this.ensureConnectedDB();
 
         return new Promise((resolve, reject) => {
@@ -179,7 +179,7 @@ export class DatabaseService {
         }
     }
 
-    async redeemAllShots(playerId: any) {
+    async redeemAllShots(playerId: string) {
         const result = await this.runQuery(
             `UPDATE shot_results 
              SET redeemed = 1 
@@ -227,7 +227,7 @@ export class DatabaseService {
 
     async getAllPlayers(): Promise<{ player_id: string }[]> {
         return this.allQuery<{ player_id: string }>(
-            `SELECT DISTINCT player_id FROM shot_results`
+            'SELECT DISTINCT player_id FROM shot_results'
         );
     }
 

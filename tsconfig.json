@@ -32,7 +32,9 @@
     "noEmitOnError": true,
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "eslint.config.mjs",
+    "jest.config.js"
   ],
   "exclude": [
     "node_modules",

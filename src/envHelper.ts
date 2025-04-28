@@ -5,32 +5,32 @@ export function verifyEnv() {
 }
 
 export function isTestEnvironment() {
-  return process.env["NODE_ENV"] === 'test' ||
-    process.env["MOCHA_RUNNING"] === 'true';
+  return process.env['NODE_ENV'] === 'test' ||
+    process.env['MOCHA_RUNNING'] === 'true';
 }
 
 export function databasePath() {
-  return process.env["DB_PATH"] || './database.db';
+  return process.env['DB_PATH'] || './database.db';
 }
 
 export function mediaPath() {
-  return process.env["MEDIA_PATH"] || './media'
+  return process.env['MEDIA_PATH'] || './media';
 }
 
 export function appId(): string {
-  return ensureEnv("APP_ID");
+  return ensureEnv('APP_ID');
 }
 
 export function discordToken() {
-  return ensureEnv("DISCORD_TOKEN");
+  return ensureEnv('DISCORD_TOKEN');
 }
 
 export function port() {
-  return process.env["PORT"] || "3000";
+  return process.env['PORT'] || '3000';
 }
 
 export function publicKey() {
-  return ensureEnv("PUBLIC_KEY");
+  return ensureEnv('PUBLIC_KEY');
 }
 
 function ensureEnv(envName: string): string {

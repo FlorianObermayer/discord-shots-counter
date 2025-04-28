@@ -6,9 +6,9 @@ export type ViolationType =
   | "Saved Own Shot"
   | "Lying about Things";
 
-  type Violation = {
-    [key in ViolationType]: string[];
-  };
+type Violation = {
+  [key in ViolationType]: string[];
+};
 
 const Violations: Violation = {
   "Toxic towards the Team": [

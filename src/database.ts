@@ -225,8 +225,8 @@ export class DatabaseService {
         return null;
     }
 
-    async getAllPlayers(): Promise<{player_id: string}[]> {
-        return this.allQuery<{player_id: string}>(
+    async getAllPlayers(): Promise<{ player_id: string }[]> {
+        return this.allQuery<{ player_id: string }>(
             `SELECT DISTINCT player_id FROM shot_results`
         );
     }

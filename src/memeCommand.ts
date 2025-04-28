@@ -2,7 +2,7 @@ import { InteractionResponseType, InteractionResponseFlags } from 'discord-inter
 import { AudioPlayerManager } from './audioPlayer.js';
 import axios from 'axios';
 import fs from 'fs';
-import { Client, Guild, Interaction, Snowflake } from 'discord.js';
+import { Client } from 'discord.js';
 
 const MEME_API_URL = 'https://myinstants-api.vercel.app/best?q=de';
 const MEMES_DIR = './media/audio/memes';
@@ -41,7 +41,7 @@ export async function getCachedOrDownloadMemes(count = -1) {
     return memePaths;
 }
 
-export async function handleMemeCommand(guildId: string, userId: string, client:Client) {
+export async function handleMemeCommand(guildId: string, userId: string, client: Client) {
     try {
         const guild = await client.guilds.fetch(guildId);
         const member = await guild.members.fetch(userId);
@@ -56,7 +56,7 @@ export async function handleMemeCommand(guildId: string, userId: string, client:
         if (randomMemePath === undefined) {
             throw new Error("randomMemePath not found");
         }
-        
+
         const audioPlayer = new AudioPlayerManager(guild);
 
         const connection = await audioPlayer.joinVoiceChannel(voiceChannelId);
@@ -69,7 +69,7 @@ export async function handleMemeCommand(guildId: string, userId: string, client:
                 content: `🎧 Playing **${randomMemePath.split("/").pop()}** in your voice channel`
             }
         };
-    } catch (error:any) {
+    } catch (error: any) {
         console.error('Meme command error:', error);
         return {
             type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -81,7 +81,7 @@ export async function handleMemeCommand(guildId: string, userId: string, client:
     }
 }
 
-export async function handleStartRandomMemes(guildId: string, userId: string, client:Client, minDelay:number, maxDelay:number) {
+export async function handleStartRandomMemes(guildId: string, userId: string, client: Client, minDelay: number, maxDelay: number) {
     try {
         const guild = await client.guilds.fetch(guildId);
         const member = await guild.members.fetch(userId);
@@ -105,7 +105,7 @@ export async function handleStartRandomMemes(guildId: string, userId: string, cl
                 content: `🎧 Started random memes in your voice channel`
             }
         };
-    } catch (error:any) {
+    } catch (error: any) {
         console.error('Meme command error:', error);
         return {
             type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -117,7 +117,7 @@ export async function handleStartRandomMemes(guildId: string, userId: string, cl
     }
 }
 
-export async function handleStopRandomMemes(guildId: string, userId: string, client:Client) {
+export async function handleStopRandomMemes(guildId: string, userId: string, client: Client) {
     try {
         const guild = await client.guilds.fetch(guildId);
         const member = await guild.members.fetch(userId);
@@ -138,7 +138,7 @@ export async function handleStopRandomMemes(guildId: string, userId: string, cli
                 content: `⏹ Stopped random memes in your voice channel`
             }
         };
-    } catch (error:any) {
+    } catch (error: any) {
         console.error('Stop meme command error:', error);
         return {
             type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,

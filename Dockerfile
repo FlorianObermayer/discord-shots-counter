@@ -16,10 +16,10 @@ COPY package*.json ./
 RUN npm ci --omit=dev && \
     npm cache clean --force
 
-# Copy and build
+# Copy and register
 COPY . .
 
-RUN npm run register:prod
+# RUN npm run register:prod TODO:fix env passing - for now we register on app start as a workaround
 
 # Stage 2: Run
 FROM node:22-bullseye

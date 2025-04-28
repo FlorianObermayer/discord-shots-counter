@@ -10,9 +10,7 @@
   },
   "scripts": {
     "start:prod": "NODE_ENV=production tsx src/app.ts",
-    "register:prod": "NODE_ENV=production tsx src/commands.ts",
     "start": "NODE_ENV=development tsx --env-file=.env.development src/app.ts",
-    "register": "NODE_ENV=development tsx --env-file=.env.development src/commands.ts",
     "test": "NODE_ENV=test jest",
     "test:watch": "NODE_ENV=test jest --watch",
     "ngrok": "ngrok http 3000"

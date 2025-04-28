@@ -103,7 +103,7 @@ const app = express();
 const PORT = port();
 
 // Health Check
-app.router.get('/health', function (res: Response) {
+app.router.get('/health', function (_, res) {
   const data = {
     uptime: process.uptime(),
     message: 'OK',

@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM node:18-bullseye AS builder
+FROM node:22-bullseye AS builder
 WORKDIR /app
 
 # Install build dependencies including FFmpeg
@@ -21,7 +21,7 @@ COPY . .
 RUN npm run register:prod
 
 # Stage 2: Run
-FROM node:18-bullseye
+FROM node:22-bullseye
 WORKDIR /app
 
 # Install runtime dependencies

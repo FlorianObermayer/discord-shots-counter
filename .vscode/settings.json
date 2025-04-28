@@ -8,10 +8,9 @@
         "Wael"
     ],
     "editor.codeActionsOnSave": {
-        "source.fixAll.eslint": "always"
+        "source.fixAll.eslint": "explicit"
     },
     "eslint.validate": [
-        "javascript",
         "json",
         "typescript",
     ]

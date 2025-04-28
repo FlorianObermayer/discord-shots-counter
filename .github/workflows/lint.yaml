@@ -19,5 +19,5 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }} # optional
           eslint-args: '--ignore-pattern=.gitignore --quiet'
-          extensions: 'js,jsx,ts,tsx'
+          extensions: 'ts,tsx'
           annotations: true

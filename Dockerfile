@@ -52,4 +52,6 @@ RUN find /app -type d -exec chmod 755 {} + && \
 USER appuser
 EXPOSE 3000
 
-ENTRYPOINT ["npm", "run", "start:prod"]
+ENV PATH /app/node_modules/.bin:$PATH
+
+ENTRYPOINT ["sh", "-c", "npm run start:prod"]

@@ -8,7 +8,7 @@ export default tseslint.config(
   tseslint.configs.recommendedTypeChecked,
   jestPlugin.configs['flat/recommended'],
   {
-    files: ['**/*.{js,mjs,cjs,ts,tsx}'],
+    files: ['**/*.mjs,cjs,ts,tsx}'],
     languageOptions: {
       globals: globals.node,
       parserOptions: {

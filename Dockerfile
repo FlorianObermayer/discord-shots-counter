@@ -40,18 +40,15 @@ RUN groupadd -r appuser -g 1001 && \
 COPY --from=builder --chown=appuser:appuser /app/node_modules ./node_modules
 COPY --from=builder --chown=appuser:appuser /app ./
 
-# Fix permissions for node_modules/.bin
-RUN chmod -R 755 /app/node_modules/.bin && \
-    chown -R appuser:appuser /app/node_modules/.bin
-
 # Security hardening
 RUN find /app -type d -exec chmod 755 {} + && \
     find /app -type f -exec chmod 644 {} + && \
     chmod 755 /app/data
 
+# Install tsx globally for the user
+RUN npm install -g tsx
+
 USER appuser
 EXPOSE 3000
 
-ENV PATH /app/node_modules/.bin:$PATH
-
-ENTRYPOINT ["sh", "-c", "npm run start:prod"]
+ENTRYPOINT ["npm", "run", "start:prod"]

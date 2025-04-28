@@ -1,19 +1,19 @@
-import { getUsernameFromId } from "./utils.js";
+import { getUsernameFromId } from './utils.js';
 
 class UsernameCache {
-    cache: Map<any, any>;
+    cache: Map<string, string>;
     constructor() {
         this.cache = new Map();
     }
 
-    async getUsername(userId: string) {
+    async getUsername(userId: string): Promise<string> {
         if (this.cache.has(userId)) {
-            return this.cache.get(userId);
-        } else {
+            return this.cache.get(userId) as string;
+        } 
             const username = await getUsernameFromId(userId);
             this.cache.set(userId, username);
             return username;
-        }
+
     }
 }
 

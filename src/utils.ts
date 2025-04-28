@@ -1,10 +1,13 @@
-import { appId, discordToken } from "./envHelper";
+import { appId, discordToken } from './envHelper';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function DiscordRequest(endpoint: string, options: { body?: any, method?: string } | undefined) {
-  // append endpoint to root API URL
-  const url = 'https://discord.com/api/v10/' + endpoint;
+  // Append endpoint to root API URL
+  const url = `https://discord.com/api/v10/${endpoint}`;
   // Stringify payloads
-  if (options && options.body) options.body = JSON.stringify(options.body);
+  if (options && options.body) {
+    options.body = JSON.stringify(options.body);
+  }
   // Use fetch to make requests
   const res = await fetch(url, {
     headers: {
@@ -13,13 +16,14 @@ export async function DiscordRequest(endpoint: string, options: { body?: any, me
     },
     ...options
   });
-  // throw API errors
+  // Throw API errors
   if (!res.ok) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const data = await res.json();
     console.log(res.status);
     throw new Error(JSON.stringify(data));
   }
-  // return original response
+  // Return original response
   return res;
 }
 
@@ -38,14 +42,12 @@ export function capitalize(str: string) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-// TODO: Typing
-export function getAllOpenShotsFormatted(shots: { [x: string]: any; }) {
+export function getAllOpenShotsFormatted(shots: { name: string, open_shots: number }[]) {
   // Format the shots object into an ASCII table with player names and open shots
   let formattedShots = '```\n';
   formattedShots += 'Player Name       | Open Shots\n';
   formattedShots += '------------------|-----------\n';
-  for (const playerId in shots) {
-    const player = shots[playerId];
+  for (const player of shots) {
     formattedShots += `${player.name.padEnd(18)}| ${player.open_shots}\n`;
   }
   formattedShots += '```';
@@ -57,15 +59,19 @@ export async function getUsernameFromId(id: string) {
   const res = await DiscordRequest(`/users/${id}`, {
     method: 'GET',
   });
-  const user = await res.json();
+  const user = await res.json() as { username: string };
   // Return the user's handle or throw an error if not found
   if (user)
     // Format the username as @username
-    return `@${user.username}`;
+  { return `@${user.username}`; }
   throw new Error('User not found');
 }
 
 export async function deletePreviousMessage(token: string, messageId: string) {
   const endpoint = `webhooks/${appId()}/${token}/messages/${messageId}`;
   await DiscordRequest(endpoint, { method: 'DELETE' });
+}
+
+export function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Unknown error';
 }

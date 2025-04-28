@@ -1,21 +1,26 @@
 // @ts-check
 
-import eslint from '@eslint/js';
+import globals from 'globals';
+import jestPlugin from 'eslint-plugin-jest';
 import tseslint from 'typescript-eslint';
-import jestPlugin from "eslint-plugin-jest";
-import globals from "globals";
 
 export default tseslint.config(
-  eslint.configs.all,
-  tseslint.configs.strictTypeChecked,
+  tseslint.configs.recommendedTypeChecked,
   jestPlugin.configs['flat/recommended'],
   {
+    files: ['**/*.{js,mjs,cjs,ts,tsx}'],
     languageOptions: {
       globals: globals.node,
       parserOptions: {
-        project: true, // Auto-detects tsconfig.json
+        project: true,         // Auto-detects tsconfig.json
+
       }
     },
-    files: ["**/*.{js,mjs,cjs,ts,tsx}"]
+    rules: {
+      'semi': 'error',
+      'semi-spacing': 'error',
+      'eqeqeq': ['error', 'always'],
+      'quotes': ['error', 'single'],
+    }
   }
 );

@@ -1,17 +1,17 @@
-import { InteractionResponseType, InteractionResponseFlags } from 'discord-interactions';
-
+import { InteractionResponseFlags, InteractionResponseType } from 'discord-interactions';
+import { Client } from 'discord.js';
 import fs from 'fs';
 import path from 'path';
-import { mediaPath } from './envHelper';
 import { AudioPlayerManager } from './audioPlayer';
-import { Client } from 'discord.js';
+
+import { mediaPath } from './envHelper';
 
 export const MOTIVATIONS_DIR = path.join(mediaPath(), '/audio/motivations');
 export const MIMIMI_DIR = path.join(mediaPath(), 'audio/mimimi');
 
 function getRandomFilePathFromDirectory(directoryPath: string): string {
     const filePaths = fs.readdirSync(directoryPath).map(file => path.join(directoryPath, file));
-    if (!filePaths || filePaths.length == 0) {
+    if (!filePaths || filePaths.length === 0) {
         throw new Error(`empty or non existing directory: ${directoryPath}`);
     }
     return filePaths[Math.floor(Math.random() * filePaths.length)]!;
@@ -28,27 +28,26 @@ export async function handleAudioCommand(guildId: string, userId: string, client
         }
 
         const randomMP3 = getRandomFilePathFromDirectory(audioSourceDirectory);
-
         const audioPlayer = new AudioPlayerManager(guild);
+        const connection = audioPlayer.joinVoiceChannel(voiceChannelId);
 
-        const connection = await audioPlayer.joinVoiceChannel(voiceChannelId);
-
-        audioPlayer.playAudioFile(connection, randomMP3);
+        void audioPlayer.playAudioFile(connection, randomMP3);
 
         return {
             type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
             data: {
                 flags: InteractionResponseFlags.EPHEMERAL,
-                content: `🎧 Playing audio clip in your voice channel`
+                content: '🎧 Playing audio clip in your voice channel'
             }
         };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Audio command error:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         return {
             type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
             data: {
                 flags: InteractionResponseFlags.EPHEMERAL,
-                content: `❌ Failed to play audio\n\`\`\`${error.message}\`\`\``
+                content: `❌ Failed to play audio\n\`\`\`${errorMessage}\`\`\``
             }
         };
     }

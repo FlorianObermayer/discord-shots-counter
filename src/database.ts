@@ -1,39 +1,45 @@
 import sqlite3 from 'sqlite3';
-import { databasePath } from './envHelper.js';
+import { databasePath } from './envHelper';
+import { ViolationType } from './violations';
 
-class DatabaseService {
-    constructor(databasePath, sqliteModule = sqlite3) {
+export class DatabaseService {
+    sqlite: typeof sqlite3;
+    databasePath: string;
+    db: sqlite3.Database | null;
+    connectionPromise: Promise<sqlite3.Database> | null;
+
+    constructor(databasePath: string, sqliteModule = sqlite3) {
         this.sqlite = sqliteModule;
         this.databasePath = databasePath;
         this.db = null;
         this.connectionPromise = null;
     }
 
-    async #ensureConnected() {
-        if (this.db) return;
+    private async ensureConnectedDB(): Promise<sqlite3.Database> {
+        if (this.db) return this.db;
         if (this.connectionPromise) return await this.connectionPromise;
 
-        this.connectionPromise = new Promise((resolve, reject) => {
+        this.connectionPromise = new Promise<sqlite3.Database>((resolve, reject) => {
             this.db = new this.sqlite.Database(this.databasePath, (err) => {
                 if (err) {
                     console.error('Database connection error:', err);
                     reject(err);
                 } else {
                     console.log(`Connected to ${this.databasePath} database`);
-                    resolve();
+                    resolve(this.db!);
                 }
             });
         });
 
         try {
-            await this.connectionPromise;
+            return await this.connectionPromise;
         } finally {
             this.connectionPromise = null;
         }
     }
 
-    async disconnect() {
-        return new Promise((resolve, reject) => {
+    async disconnect(): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
             if (!this.db) {
                 resolve();
                 return;
@@ -49,8 +55,8 @@ class DatabaseService {
         });
     }
 
-    async _initializeDatabase() {
-        await this.#runQuery(`
+    async _initializeDatabase(): Promise<void> {
+        await this.runQuery(`
             CREATE TABLE IF NOT EXISTS shot_results (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 player_id TEXT NOT NULL,
@@ -61,11 +67,11 @@ class DatabaseService {
         `);
     }
 
-    async #runQuery(sql, params = []) {
-        await this.#ensureConnected();
+    private async runQuery<T>(sql: string, params: T[] = []): Promise<sqlite3.RunResult> {
+        const db = await this.ensureConnectedDB();
 
-        return new Promise((resolve, reject) => {
-            this.db.run(sql, params, function (err) {
+        return new Promise<sqlite3.RunResult>((resolve, reject) => {
+            db.run(sql, params, function (err) {
                 if (err) {
                     reject(err);
                 } else {
@@ -75,11 +81,11 @@ class DatabaseService {
         });
     }
 
-    async #getQuery(sql, params = []) {
-        await this.#ensureConnected();
+    private async getQuery<T>(sql: string, params: any[] = []): Promise<T> {
+        const db = await this.ensureConnectedDB();
 
         return new Promise((resolve, reject) => {
-            this.db.get(sql, params, (err, row) => {
+            db.get<T>(sql, params, (err, row) => {
                 if (err) {
                     reject(err);
                 } else {
@@ -89,11 +95,11 @@ class DatabaseService {
         });
     }
 
-    async #allQuery(sql, params = []) {
-        await this.#ensureConnected();
+    private async allQuery<T>(sql: string, params = []): Promise<T[]> {
+        const db = await this.ensureConnectedDB();
 
         return new Promise((resolve, reject) => {
-            this.db.all(sql, params, (err, rows) => {
+            db.all<T>(sql, params, (err, rows) => {
                 if (err) {
                     reject(err);
                 } else {
@@ -103,8 +109,8 @@ class DatabaseService {
         });
     }
 
-    async addShot(playerId, violationType) {
-        const result = await this.#runQuery(
+    async addShot(playerId: string, violationType: ViolationType): Promise<number> {
+        const result = await this.runQuery(
             `INSERT INTO shot_results (player_id, violation_type)
              VALUES (?, ?)`,
             [playerId, violationType]
@@ -112,8 +118,8 @@ class DatabaseService {
         return result.lastID;
     }
 
-    async getPlayerShots(playerId) {
-        const row = await this.#getQuery(
+    async getPlayerShots(playerId: string): Promise<{ total_shots: number; open_shots: number; redeemed_shots: number; }> {
+        const row = await this.getQuery<{ total_shots: number, open_shots: number, redeemed_shots: number }>(
             `SELECT 
                 COUNT(*) as total_shots,
                 COUNT(CASE WHEN redeemed = 0 THEN 1 END) as open_shots,
@@ -130,11 +136,14 @@ class DatabaseService {
         };
     }
 
-    async redeemShot(playerId) {
+    async redeemShot(playerId: string) {
         try {
-            await this.#runQuery('BEGIN TRANSACTION');
+            await this.runQuery('BEGIN TRANSACTION');
 
-            const row = await this.#getQuery(
+            const row = await this.getQuery<{
+                id: string;
+                violation_type: ViolationType;
+            }>(
                 `SELECT id, violation_type
                  FROM shot_results
                  WHERE player_id = ? AND redeemed = 0 
@@ -144,34 +153,34 @@ class DatabaseService {
             );
 
             if (!row) {
-                await this.#runQuery('ROLLBACK');
+                await this.runQuery('ROLLBACK');
                 return {
                     changes: 0,
                     redeemed: false,
                 };
             }
 
-            const result = await this.#runQuery(
+            const result = await this.runQuery(
                 `UPDATE shot_results 
                  SET redeemed = 1 
                  WHERE id = ?`,
                 [row.id]
             );
 
-            await this.#runQuery('COMMIT');
+            await this.runQuery('COMMIT');
             return {
                 changes: result.changes,
                 redeemed: true,
                 violationType: row.violation_type
             };
         } catch (error) {
-            await this.#runQuery('ROLLBACK');
+            await this.runQuery('ROLLBACK');
             throw error;
         }
     }
 
-    async redeemAllShots(playerId) {
-        const result = await this.#runQuery(
+    async redeemAllShots(playerId: any) {
+        const result = await this.runQuery(
             `UPDATE shot_results 
              SET redeemed = 1 
              WHERE player_id = ? AND redeemed = 0`,
@@ -180,8 +189,8 @@ class DatabaseService {
         return result.changes;
     }
 
-    async getAllOpenShots() {
-        return this.#allQuery(
+    async getAllOpenShots(): Promise<{ player_id: string, open_shots: number }[]> {
+        return this.allQuery<{ player_id: string, open_shots: number }>(
             `SELECT player_id, COUNT(*) as open_shots
              FROM shot_results
              WHERE redeemed = 0
@@ -189,9 +198,16 @@ class DatabaseService {
         );
     }
 
-    async getLastShot(playerId) {
-        const row = await this.#getQuery(
-            `SELECT violation_type, added_at
+    async getLastShot(playerId: string): Promise<{
+        violationType: ViolationType; date: Date;
+        redeemed: boolean;
+    } | null> {
+        const row = await this.getQuery<{
+            violation_type: ViolationType;
+            added_at: string;
+            redeemed: number;
+        }>(
+            `SELECT violation_type, added_at, redeemed
              FROM shot_results
              WHERE player_id = ?
              ORDER BY added_at DESC
@@ -209,8 +225,8 @@ class DatabaseService {
         return null;
     }
 
-    async getAllPlayers() {
-        return this.#allQuery(
+    async getAllPlayers(): Promise<{player_id: string}[]> {
+        return this.allQuery<{player_id: string}>(
             `SELECT DISTINCT player_id FROM shot_results`
         );
     }

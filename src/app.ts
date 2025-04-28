@@ -91,7 +91,6 @@ async function listAllShotsChannelMessage(isPublic: boolean) {
   };
 }
 
-
 // Initialize Discord Client
 const client = new Client({
   intents: [IntentsBitField.Flags.Guilds, IntentsBitField.Flags.GuildVoiceStates]
@@ -102,6 +101,17 @@ void client.login(discordToken());
 const app = express();
 // Get port, or default to 3000
 const PORT = port();
+
+// Health Check
+app.router.get('/health', function (res: Response) {
+  const data = {
+    uptime: process.uptime(),
+    message: 'OK',
+    date: new Date(),
+  };
+
+  res.status(200).send(data);
+});
 
 /**
  * Interactions endpoint URL where Discord will send HTTP requests

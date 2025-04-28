@@ -6,7 +6,7 @@ class UsernameCache {
         this.cache = new Map();
     }
 
-    async getUsername(userId:string) {
+    async getUsername(userId: string) {
         if (this.cache.has(userId)) {
             return this.cache.get(userId);
         } else {

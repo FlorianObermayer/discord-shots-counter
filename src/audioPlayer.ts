@@ -54,8 +54,11 @@ export class AudioPlayerManager {
         const playNext = async () => {
             try {
                 const connection = await this.joinVoiceChannel(voiceChannelId);
-                const randomSource = audioSources[Math.floor(Math.random() * audioSources.length)];
 
+                if (audioSources.length == 0) {
+                    throw new Error("audioSources is empty");
+                }
+                const randomSource = audioSources[Math.floor(Math.random() * audioSources.length)]!;
                 await this.playAudioFile(connection, randomSource);
 
             } catch (error) {

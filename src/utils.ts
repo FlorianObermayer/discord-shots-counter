@@ -1,4 +1,6 @@
-export async function DiscordRequest(endpoint: string, options: { body?:any, method?: string} | undefined) {
+import { appId, discordToken } from "./envHelper";
+
+export async function DiscordRequest(endpoint: string, options: { body?: any, method?: string } | undefined) {
   // append endpoint to root API URL
   const url = 'https://discord.com/api/v10/' + endpoint;
   // Stringify payloads
@@ -6,7 +8,7 @@ export async function DiscordRequest(endpoint: string, options: { body?:any, met
   // Use fetch to make requests
   const res = await fetch(url, {
     headers: {
-      Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+      Authorization: `Bot ${discordToken()}`,
       'Content-Type': 'application/json; charset=UTF-8',
     },
     ...options
@@ -64,6 +66,6 @@ export async function getUsernameFromId(id: string) {
 }
 
 export async function deletePreviousMessage(token: string, messageId: string) {
-  const endpoint = `webhooks/${process.env.APP_ID}/${token}/messages/${messageId}`;
+  const endpoint = `webhooks/${appId()}/${token}/messages/${messageId}`;
   await DiscordRequest(endpoint, { method: 'DELETE' });
 }

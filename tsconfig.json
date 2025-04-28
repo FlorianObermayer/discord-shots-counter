@@ -33,8 +33,7 @@
   },
   "include": [
     "src/**/*",
-    "eslint.config.mjs",
-    "jest.config.js"
+    "eslint.config.mjs"
   ],
   "exclude": [
     "node_modules",

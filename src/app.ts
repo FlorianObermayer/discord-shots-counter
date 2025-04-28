@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import {
   InteractionType,
   InteractionResponseType,
@@ -7,17 +7,17 @@ import {
   verifyKeyMiddleware,
   ButtonStyleTypes,
 } from 'discord-interactions';
-import { capitalize, getAllOpenShotsFormatted, deletePreviousMessage } from './utils.js';
-import { createDatabaseService } from './database.js';
-import { getRandomViolationDescription as getRandomViolationDescription, getViolations } from './violations.js';
-import usernameCache from './usernameCache.js';
-import { databasePath, verifyEnv } from './envHelper.js';
-import { COMMANDS } from './commands.js';
-import { handleAudioCommand, MIMIMI_DIR, MOTIVATIONS_DIR } from './audioCommand.js';
+import { capitalize, getAllOpenShotsFormatted, deletePreviousMessage } from './utils';
+import { createDatabaseService, DatabaseService } from './database';
+import { getRandomViolationDescription as getRandomViolationDescription, getViolationTypes, ViolationType } from './violations';
+import usernameCache from './usernameCache';
+import { databasePath, discordToken, port, verifyEnv, publicKey } from './envHelper';
+import { Commands } from './commands';
+import { handleAudioCommand, MIMIMI_DIR, MOTIVATIONS_DIR } from './audioCommand';
 import {
-  Client, IntentsBitField
+  Client, IntentsBitField,
 } from 'discord.js';
-import { getCachedOrDownloadMemes, handleMemeCommand, handleStartRandomMemes, handleStopRandomMemes } from './memeCommand.js';
+import { getCachedOrDownloadMemes, handleMemeCommand, handleStartRandomMemes, handleStopRandomMemes } from './memeCommand';
 
 // Catch unhandled promise rejections
 process.on('unhandledRejection', (err) => {
@@ -33,24 +33,30 @@ process.on('uncaughtException', (err) => {
 
 verifyEnv();
 
-console.log('Starting server...');
 
-const db = await createDatabaseService(databasePath());
+async function initializeApp() {
+  console.log('Starting server...');
 
-try {
+  const db = await createDatabaseService(databasePath());
+
   console.log('Warming up meme cache...');
-  // warm up meme cache
-  await getCachedOrDownloadMemes();
-  console.log('Meme cache warmed up.');
-} catch (e) {
-  console.error('Failed to warm up meme cache', e);
+  getCachedOrDownloadMemes().catch((e) => {
+    console.error('Error warming up meme cache:', e);
+  }).then(_ => console.log('Meme cache warmed up.'));
+
+  return db;
 }
 
-async function handleShot(response, offender, violationType) {
+let db: DatabaseService;
+(async () => {
+  db = await initializeApp();
+})();
+
+async function handleShot(response: Response, offender: string, violationType: ViolationType) {
   await db.addShot(offender, violationType);
 
   const result = response.send({
-    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+    type: InteractionResponseType,
     data: {
       content: `### Violation confirmed.\n<@${offender}> has to take a shot for **${capitalize(violationType)}**\n\n> ${getRandomViolationDescription(violationType)}.`,
     }
@@ -59,7 +65,7 @@ async function handleShot(response, offender, violationType) {
   return result;
 }
 
-async function listAllShotsChannelMessage(isPublic) {
+async function listAllShotsChannelMessage(isPublic: boolean) {
 
   const dbShots = await db.getAllOpenShots();
 
@@ -88,28 +94,29 @@ async function listAllShotsChannelMessage(isPublic) {
 const client = new Client({
   intents: [IntentsBitField.Flags.Guilds, IntentsBitField.Flags.GuildVoiceStates]
 });
-client.login(process.env.DISCORD_TOKEN);
+client.login(discordToken());
 
 // Create an express app
 const app = express();
 // Get port, or default to 3000
-const PORT = process.env.PORT || 3000;
+const PORT = port();
 
 /**
  * Interactions endpoint URL where Discord will send HTTP requests
  * Parse request body and verifies incoming requests using discord-interactions package
  */
-app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async function (req, res) {
+app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req: Request, res: Response): Promise<void> {
   // Interaction type and data
   const { type, data } = req.body;
 
-  // console.log('INTERACTION::body', req.body);
+  console.log('INTERACTION::body', req.body);
 
   /**
    * Handle verification requests
    */
   if (type === InteractionType.PING) {
-    return res.send({ type: InteractionResponseType.PONG });
+    res.send({ type: InteractionResponseType.PONG });
+    return;
   }
 
   /**
@@ -119,47 +126,56 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
   if (type === InteractionType.APPLICATION_COMMAND) {
     const { name } = data;
 
-    if (name === COMMANDS.MEME_COMMAND.name) {
-      const response = await handleMemeCommand(req.body, client);
-      return res.send(response);
+    const guildId: string = req.body.guild_id;
+    const userId: string = req.body.member.user.id;
+
+    if (name === Commands['MEME_COMMAND'].name) {
+      const response = await handleMemeCommand(guildId, userId, client);
+      res.send(response);
+      return;
     }
 
-    if (name === COMMANDS.START_RANDOM_MEMES_COMMAND.name) {
+    if (name === Commands.START_RANDOM_MEMES_COMMAND.name) {
       const minDelay = data.options ? data.options[0]?.value || 30 : 30; // defaults to 30 seconds
       const maxDelay = data.options ? data.options[1]?.value || 60 : 60; // defaults to 60 seconds
 
-      const response = await handleStartRandomMemes(req.body, client, minDelay, maxDelay);
-      return res.send(response);
+      const response = await handleStartRandomMemes(guildId, userId, client, minDelay, maxDelay);
+      res.send(response);
+      return;
     }
 
-    if (name === COMMANDS.STOP_RANDOM_MEMES_COMMAND.name) {
-      const response = await handleStopRandomMemes(req.body, client);
-      return res.send(response);
+    if (name === Commands.STOP_RANDOM_MEMES_COMMAND.name) {
+      const response = await handleStopRandomMemes(guildId, userId, client);
+      res.send(response);
+      return;
     }
 
-    if (name === COMMANDS.MOTIVATE_COMMAND.name) {
-      const response = await handleAudioCommand(req.body, client, MOTIVATIONS_DIR);
-      return res.send(response);
+    if (name === Commands.MOTIVATE_COMMAND.name) {
+      const response = await handleAudioCommand(guildId, userId, client, MOTIVATIONS_DIR);
+      res.send(response);
+      return;
     }
 
-    if (name === COMMANDS.MIMIMI_COMMAND.name) {
-      const response = await handleAudioCommand(req.body, client, MIMIMI_DIR);
-      return res.send(response);
+    if (name === Commands.MIMIMI_COMMAND.name) {
+      const response = await handleAudioCommand(guildId, userId, client, MIMIMI_DIR);
+      res.send(response);
+      return;
     }
 
-    if (name == COMMANDS.SHOT_NON_INTERACTIVE_COMMAND.name) {
+    if (name == Commands.SHOT_NON_INTERACTIVE_COMMAND.name) {
       console.log(data);
 
       const offender = data.options[0].value;
       const violation = data.options[1].value;
 
-      return await handleShot(res, offender, violation);
+      await handleShot(res, offender, violation);
+      return;
     }
 
-    if (name === COMMANDS.REDEEM_SHOT_COMMAND.name) {
+    if (name === Commands.REDEEM_SHOT_COMMAND.name) {
       // redeem 1 shot for the user
       const offender = req.body.member.user.id;
-      const result = res.send({
+      res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
           flags: InteractionResponseFlags.EPHEMERAL,
@@ -189,18 +205,18 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         },
       });
 
-      return result;
+      return;
     }
 
-    if (name === COMMANDS.LIST_OPEN_SHOTS_COMMAND.name) {
+    if (name === Commands.LIST_OPEN_SHOTS_COMMAND.name) {
       // List all open shots
-      return res.send(await listAllShotsChannelMessage(true));
+      res.send(await listAllShotsChannelMessage(true));
+      return
     }
 
     // shot command
-    if (name === COMMANDS.SHOT_COMMAND.name) {
-
-      const result = res.send({
+    if (name === Commands.SHOT_COMMAND.name) {
+      res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
           flags: InteractionResponseFlags.EPHEMERAL,
@@ -224,11 +240,11 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         },
       });
 
-      return result;
+      return;
     }
 
     console.error(`unknown command: ${name}`);
-    return res.status(400).json({ error: 'unknown command' });
+    res.status(400).json({ error: 'unknown command' });
   }
 
   /**
@@ -240,7 +256,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     const componentId = data.custom_id;
 
     if (componentId === 'offender_select') {
-      const result = res.send({
+      res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
           flags: InteractionResponseFlags.EPHEMERAL,
@@ -256,10 +272,11 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                   // Value for your app to identify the select menu interactions
                   custom_id: 'violation_select_offender=' + data.values[0],
                   // Select options - see https://discord.com/developers/docs/interactions/message-components#select-menu-object-select-option-structure
-                  options: getViolations().map((violation) => ({
-                    label: capitalize(violation),
-                    value: violation,
-                  })),
+                  options: getViolationTypes
+                    ().map((violation) => ({
+                      label: capitalize(violation),
+                      value: violation,
+                    })),
                   placeholder: "Select the violation",
                   min_values: 1,
                   max_values: 1,
@@ -271,14 +288,14 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       });
 
       await deletePreviousMessage(req.body.token, req.body.message.id);
-      return result;
+      return;
     }
 
     if (componentId.startsWith('violation_select_')) {
       const offender = componentId.split('=')[1];
       const violation = data.values[0];
 
-      const result = res.send({
+      res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
           flags: InteractionResponseFlags.EPHEMERAL,
@@ -309,7 +326,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       });
 
       await deletePreviousMessage(req.body.token, req.body.message.id);
-      return result;
+      return;
     }
 
     if (componentId.startsWith('accept_shot_button_')) {
@@ -317,15 +334,15 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const offender = componentId.split('=')[1].split(',')[0];
       const violation = componentId.split(',')[1].split('=')[1];
 
-      const result = await handleShot(res, offender, violation);
+      await handleShot(res, offender, violation);
 
       await deletePreviousMessage(req.body.token, req.body.message.id);
 
-      return result;
+      return;
     }
 
     if (componentId === 'cancel_shot_button') {
-      const result = res.send({
+      res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
           content: 'Shot cancelled',
@@ -334,12 +351,12 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       });
 
       await deletePreviousMessage(req.body.token, req.body.message.id);
-      return result;
+      return;
     }
 
     if (componentId.startsWith('cancel_redeem_button_')) {
       const offender = componentId.split('=')[1];
-      const result = res.send({
+      res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
           content: `### You fucking liar. That will cost you another shot!\n@here: Please punish the filthy liar <@${offender}>!`,
@@ -347,16 +364,16 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       });
 
       await deletePreviousMessage(req.body.token, req.body.message.id);
-      return result;
+      return;
     }
 
     if (componentId.startsWith('accept_redeem_button_')) {
       // get the associated game ID
       const offender = componentId.split('=')[1].split(',')[0];
       const { redeemed, violationType } = await db.redeemShot(offender);
-      const content = redeemed ? `### Shot redemption confirmed.\n<@${offender}> took a shot for **${capitalize(violationType)}**.` : `### <@${offender}> is an absolute alcoholic. They didn't have to drink but hey, enjoy! Maybe you actually start hitting the ball soon!`
+      const content = redeemed ? `### Shot redemption confirmed.\n<@${offender}> took a shot for **${capitalize(violationType!)}**.` : `### <@${offender}> is an absolute alcoholic. They didn't have to drink but hey, enjoy! Maybe you actually start hitting the ball soon!`
 
-      const result = res.send({
+      res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
           content: content,
@@ -364,14 +381,12 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       });
 
       await deletePreviousMessage(req.body.token, req.body.message.id);
-      return result;
+      return;
     }
   }
 
-
-
   console.error('unknown interaction type', type);
-  return res.status(400).json({ error: 'unknown interaction type' });
+  res.status(400).json({ error: 'unknown interaction type' });
 });
 
 app.listen(PORT, () => {

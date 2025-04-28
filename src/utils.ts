@@ -1,9 +1,8 @@
-
-export async function DiscordRequest(endpoint, options) {
+export async function DiscordRequest(endpoint: string, options: { body?:any, method?: string} | undefined) {
   // append endpoint to root API URL
   const url = 'https://discord.com/api/v10/' + endpoint;
   // Stringify payloads
-  if (options.body) options.body = JSON.stringify(options.body);
+  if (options && options.body) options.body = JSON.stringify(options.body);
   // Use fetch to make requests
   const res = await fetch(url, {
     headers: {
@@ -22,7 +21,7 @@ export async function DiscordRequest(endpoint, options) {
   return res;
 }
 
-export async function InstallGlobalCommands(appId, commands) {
+export async function InstallGlobalCommands(appId: string, commands: Command[]) {
   // API endpoint to overwrite global commands
   const endpoint = `applications/${appId}/commands`;
 
@@ -33,11 +32,12 @@ export async function InstallGlobalCommands(appId, commands) {
     console.error(err);
   }
 }
-export function capitalize(str) {
+export function capitalize(str: string) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-export function getAllOpenShotsFormatted(shots) {
+// TODO: Typing
+export function getAllOpenShotsFormatted(shots: { [x: string]: any; }) {
   // Format the shots object into an ASCII table with player names and open shots
   let formattedShots = '```\n';
   formattedShots += 'Player Name       | Open Shots\n';
@@ -50,7 +50,7 @@ export function getAllOpenShotsFormatted(shots) {
   return formattedShots;
 }
 
-export async function getUsernameFromId(id) {
+export async function getUsernameFromId(id: string) {
   // Fetch the username from the Discord API using the user ID
   const res = await DiscordRequest(`/users/${id}`, {
     method: 'GET',
@@ -63,7 +63,7 @@ export async function getUsernameFromId(id) {
   throw new Error('User not found');
 }
 
-export async function deletePreviousMessage(token, messageId) {
+export async function deletePreviousMessage(token: string, messageId: string) {
   const endpoint = `webhooks/${process.env.APP_ID}/${token}/messages/${messageId}`;
   await DiscordRequest(endpoint, { method: 'DELETE' });
 }

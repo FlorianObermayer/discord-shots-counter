@@ -1,26 +1,26 @@
 import { InteractionResponseType, InteractionResponseFlags } from 'discord-interactions';
-import { AudioPlayerManager } from './audioPlayer.js';
+
 import fs from 'fs';
 import path from 'path';
-import { mediaPath } from './envHelper.js';
+import { mediaPath } from './envHelper';
+import { AudioPlayerManager } from './audioPlayer';
+import { Client, FetchGuildOptions, FetchMemberOptions, FetchMembersOptions, UserResolvable } from 'discord.js';
 
 export const MOTIVATIONS_DIR = path.join(mediaPath(), '/audio/motivations');
 export const MIMIMI_DIR = path.join(mediaPath(), 'audio/mimimi');
 
-const audioPlayer = new AudioPlayerManager();
-
-function getRandomFilePathFromDirectory(directoryPath) {
-    const filePaths = fs.readdirSync(directoryPath).map(file => path.join(directoryPath,file));
+function getRandomFilePathFromDirectory(directoryPath: string) {
+    const filePaths = fs.readdirSync(directoryPath).map(file => path.join(directoryPath, file));
     if (!filePaths || filePaths.length == 0) {
         throw new Error(`empty or non existing directory: ${directoryPath}`);
     }
     return filePaths[Math.floor(Math.random() * filePaths.length)];
 }
 
-export async function handleAudioCommand(interaction, client, audioSourceDirectory) {
+export async function handleAudioCommand(guildId: string, userId: string, client:Client, audioSourceDirectory: string) {
     try {
-        const guild = await client.guilds.fetch(interaction.guild_id);
-        const member = await guild.members.fetch(interaction.member.user.id);
+        const guild = await client.guilds.fetch(guildId);
+        const member = await guild.members.fetch(userId);
         const voiceChannelId = member.voice?.channelId;
 
         if (!voiceChannelId) {
@@ -28,7 +28,10 @@ export async function handleAudioCommand(interaction, client, audioSourceDirecto
         }
 
         const randomMP3 = getRandomFilePathFromDirectory(audioSourceDirectory);
-        const connection = await audioPlayer.joinVoiceChannel(guild, voiceChannelId);
+
+        const audioPlayer = new AudioPlayerManager(guild);
+
+        const connection = await audioPlayer.joinVoiceChannel(voiceChannelId);
 
         audioPlayer.playAudioFile(connection, randomMP3);
 
@@ -39,7 +42,7 @@ export async function handleAudioCommand(interaction, client, audioSourceDirecto
                 content: `🎧 Playing audio clip in your voice channel`
             }
         };
-    } catch (error) {
+    } catch (error: any) {
         console.error('Audio command error:', error);
         return {
             type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,

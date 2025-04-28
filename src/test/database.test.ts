@@ -1,25 +1,27 @@
-import { describe, test, expect } from '@jest/globals';
-
-import { createDatabaseService } from '../database.js';
-import { getViolations } from '../violations.js';
-
+import { createDatabaseService } from '../database';
+import { getViolationTypes } from '../violations';
 
 describe('Integration Tests', () => {
     test('smoke test', async () => {
 
         const db = await createDatabaseService(":memory:");
 
-        const userId1 = 1;
-        const userId2 = 2;
-        const violationType1 = getViolations()[0];
-        const violationType2 = getViolations()[1];
-        const violationType3 = getViolations()[2];
+        const userId1 = "1";
+        const userId2 = "2";
+        const violationType1 = getViolationTypes()[0]!;
+        const violationType2 = getViolationTypes()[1]!;
+        const violationType3 = getViolationTypes()[2]!;
 
         await db.addShot(userId1, violationType1);
 
         const firstShotUser1 = await db.getLastShot(userId1);
 
         expect(firstShotUser1).toBeTruthy();
+
+        if (!firstShotUser1) {
+            throw new Error("fistShotUser1 was null");
+        }
+
         expect(firstShotUser1.violationType).toBe(violationType1);
         expect(firstShotUser1.redeemed).toBe(false);
         expect(firstShotUser1.date).toBeTruthy();
@@ -70,19 +72,19 @@ describe('Scaffolding', () => {
 
     test('create initial shots in db', async () => {
 
-        var db = await createDatabaseService(":memory:");
+        const db = await createDatabaseService(":memory:");
+
+        async function createShots(playerId: string, count: number) {
+            for (let i = 0; i < count; i++) {
+                const violations = getViolationTypes();
+                const violation = violations[Math.floor(Math.random() * violations.length)]!;
+                await db.addShot(playerId, violation);
+            }
+        }
 
         const kemurId = "232460657629462528";
         const pawnobiId = "299962313442590721";
         const flexId = "238705817422004226";
-
-        async function createShots(playerId, count) {
-            for (let i = 0; i < count; i++) {
-                const violations = getViolations();
-                const violation = violations[Math.floor(Math.random() * violations.length)];
-                await db.addShot(playerId, violation);
-            }
-        }
 
         // from snapshot 2025-04-17
         await createShots(pawnobiId, 10);
@@ -90,3 +92,4 @@ describe('Scaffolding', () => {
         await createShots(kemurId, 8);
     });
 });
+

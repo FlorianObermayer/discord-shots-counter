@@ -6,3 +6,4 @@ database.db
 .env.production
 .DS_Store
 /media/audio/memes/
+dist/

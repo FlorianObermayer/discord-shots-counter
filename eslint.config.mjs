@@ -5,15 +5,19 @@ import jestPlugin from 'eslint-plugin-jest';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
+  {
+    ignores: [
+      'jest.config.js',
+      'eslint.config.mjs',
+    ]
+  },
   tseslint.configs.recommendedTypeChecked,
   jestPlugin.configs['flat/recommended'],
   {
-    files: ['**/*.mjs,cjs,ts,tsx}'],
     languageOptions: {
       globals: globals.node,
       parserOptions: {
         project: true,         // Auto-detects tsconfig.json
-
       }
     },
     rules: {
@@ -22,5 +26,5 @@ export default tseslint.config(
       'eqeqeq': ['error', 'always'],
       'quotes': ['error', 'single'],
     }
-  }
+  },
 );

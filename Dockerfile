@@ -19,7 +19,6 @@ RUN npm ci --omit=dev && \
 # Copy and build
 COPY . .
 
-RUN npm run build:prod
 RUN npm run register:prod
 
 # Stage 2: Run

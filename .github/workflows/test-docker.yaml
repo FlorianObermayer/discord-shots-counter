@@ -1,0 +1,64 @@
+name: Docker CI
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  merge_group:
+    branches:
+      - main
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-buildx-
+
+      - name: Test Docker build
+        run: docker build --file=Dockerfile --tag=discord-shots-counter-test-build .
+
+      - name: Install validation tools
+        run: sudo apt-get -qq update && sudo apt-get -qq install jq bc coreutils
+
+      - name: Test container stability
+        run: |
+          set -e
+          container_id=$(docker run --rm -d -p 3000:3000 discord-shots-counter-test-build)
+          trap "docker stop $container_id" EXIT
+
+          start_time=$(date +%s)
+          last_uptime=0
+
+          for i in {1..5}; do
+            echo "Health check attempt $i/5"
+            response=$(curl -s http://localhost:3000/health || { docker logs $container_id; exit 1; })
+            
+            uptime=$(jq -r '.uptime' <<< "$response")
+            date=$(jq -r '.date' <<< "$response")
+            
+            if (( $(echo "$uptime <= $last_uptime" | bc -l) )); then
+              echo "Uptime regression: $last_uptime -> $uptime"
+              docker logs $container_id
+              exit 1
+            fi
+            
+            last_uptime=$uptime
+            sleep 5
+          done
+
+      - name: Cleanup
+        if: always()
+        run: docker ps -aq | xargs -r docker rm -f

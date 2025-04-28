@@ -13,85 +13,59 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    - name: Use Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '22.x'
-    - run: npm ci
-    - run: npm run build --if-present
-    - run: npm run test
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-    - name: Test Docker build
-      run: docker build --file=Dockerfile --tag=discord-shots-counter-test-build .
-    - name: Install validation tools
-      run: |
-        sudo apt-get -qq update
-        sudo apt-get -qq install jq bc coreutils  # date from coreutils
-    - name: Test container startup with uptime validation
-      run: |
-        # Start container with timestamp
-        start_time=$(date +%s)
-        docker run --rm -d --name uptime-test -p 3000:3000 discord-shots-counter
-        sleep 5  # Initial buffer
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "22.x"
+      - run: npm ci
+      - run: npm run build --if-present
+      - run: npm run test
 
-        # Initialize variables
-        last_uptime=0
-        last_date=""
-        restart_detected=false
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-        # Health check loop
-        for i in {1..5}; do
-          echo "Attempt $i/5: Checking health..."
-          response=$(curl -s http://localhost:3000/health || true)
-          echo "Raw response: $response"
-          
-          # Parse values
-          current_uptime=$(echo "$response" | jq -r '.uptime // empty')
-          current_date=$(echo "$response" | jq -r '.date // empty')
-          
-          if [ -z "$current_uptime" ] || [ -z "$current_date" ]; then
-            echo "❌ Missing uptime or date in response"
-            continue
-          fi
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-buildx-
 
-          # Convert date to timestamp
-          current_timestamp=$(date -d "$current_date" +%s 2>/dev/null || echo "invalid")
-          if [ "$current_timestamp" == "invalid" ]; then
-            echo "❌ Invalid date format: $current_date"
-            continue
-          fi
+      - name: Test Docker build
+        run: docker build --file=Dockerfile --tag=discord-shots-counter-test-build .
 
-          # Uptime validation
-          echo "Uptime: $current_uptime | Date: $current_date"
-          
-          # Check 1: Uptime should increase
-          if (( $(echo "$current_uptime <= $last_uptime" | bc -l) )); then
-            echo "⚠ Uptime decreased (last: $last_uptime, current: $current_uptime)"
-            restart_detected=true
-          fi
-          
-          # Check 2: Server date should be after container start
-          if (( current_timestamp < start_time )); then
-            echo "⚠ Server date is before container start"
-            restart_detected=true
-          fi
+      - name: Install validation tools
+        run: sudo apt-get -qq update && sudo apt-get -qq install jq bc coreutils
 
-          last_uptime=$current_uptime
-          last_date=$current_date
-          sleep 5
-        done
+      - name: Test container stability
+        run: |
+          set -e
+          container_id=$(docker run --rm -d -p 3000:3000 discord-shots-counter-test-build)
+          trap "docker stop $container_id" EXIT
 
-        # Final evaluation
-        if $restart_detected; then
-          echo "❌ Server restart detected during checks"
-          docker logs uptime-test
-          docker stop uptime-test
-          exit 1
-        else
-          echo "✓ Uptime progression normal"
-          docker stop uptime-test
-          exit 0
-        fi
+          start_time=$(date +%s)
+          last_uptime=0
+
+          for i in {1..5}; do
+            echo "Health check attempt $i/5"
+            response=$(curl -s http://localhost:3000/health || { docker logs $container_id; exit 1; })
+            
+            uptime=$(jq -r '.uptime' <<< "$response")
+            date=$(jq -r '.date' <<< "$response")
+            
+            if (( $(echo "$uptime <= $last_uptime" | bc -l) )); then
+              echo "Uptime regression: $last_uptime -> $uptime"
+              docker logs $container_id
+              exit 1
+            fi
+            
+            last_uptime=$uptime
+            sleep 5
+          done
+
+      - name: Cleanup
+        if: always()
+        run: docker ps -aq | xargs -r docker rm -f

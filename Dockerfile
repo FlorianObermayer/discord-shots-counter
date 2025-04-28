@@ -34,11 +34,15 @@ RUN apt-get update && \
 RUN groupadd -r appuser -g 1001 && \
     useradd -r -u 1001 -g appuser appuser && \
     mkdir -p /app/data && \
-    chown -R appuser:appuser /app/data
+    chown -R appuser:appuser /app
 
-# Copy from builder
+# Copy from builder with proper permissions
 COPY --from=builder --chown=appuser:appuser /app/node_modules ./node_modules
 COPY --from=builder --chown=appuser:appuser /app ./
+
+# Fix permissions for node_modules/.bin
+RUN chmod -R 755 /app/node_modules/.bin && \
+    chown -R appuser:appuser /app/node_modules/.bin
 
 # Security hardening
 RUN find /app -type d -exec chmod 755 {} + && \

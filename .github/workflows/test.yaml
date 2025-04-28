@@ -14,14 +14,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@latest
+      uses: actions/checkout@v4
     - name: Use Node.js
-      uses: actions/setup-node@latest
+      uses: actions/setup-node@v3
       with:
         node-version: '22.x'
     - run: npm ci
     - run: npm run build --if-present
     - run: npm run test
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@latest
+      uses: docker/setup-buildx-action@v3
       

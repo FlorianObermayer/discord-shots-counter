@@ -1,11 +1,12 @@
 import { getUsernameFromId } from "./utils.js";
 
 class UsernameCache {
+    cache: Map<any, any>;
     constructor() {
         this.cache = new Map();
     }
 
-    async getUsername(userId) {
+    async getUsername(userId:string) {
         if (this.cache.has(userId)) {
             return this.cache.get(userId);
         } else {

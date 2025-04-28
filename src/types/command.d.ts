@@ -1,0 +1,1 @@
+type Command = Pick<ApplicationCommand, 'name' | 'description' | 'type' | 'integrationTypes' | 'contexts'> | Pick<ApplicationCommand, 'name' | 'description' | 'type' | 'integrationTypes' | 'contexts' | 'options'>

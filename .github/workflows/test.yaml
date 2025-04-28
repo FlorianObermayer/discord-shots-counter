@@ -25,5 +25,73 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
     - name: Test Docker build
-      run: docker build --file=Dockerfile --tag=test-build .
-      
+      run: docker build --file=Dockerfile --tag=discord-shots-counter-test-build .
+    - name: Install validation tools
+      run: |
+        sudo apt-get -qq update
+        sudo apt-get -qq install jq bc coreutils  # date from coreutils
+    - name: Test container startup with uptime validation
+      run: |
+        # Start container with timestamp
+        start_time=$(date +%s)
+        docker run --rm -d --name uptime-test -p 3000:3000 discord-shots-counter
+        sleep 5  # Initial buffer
+
+        # Initialize variables
+        last_uptime=0
+        last_date=""
+        restart_detected=false
+
+        # Health check loop
+        for i in {1..5}; do
+          echo "Attempt $i/5: Checking health..."
+          response=$(curl -s http://localhost:3000/health || true)
+          echo "Raw response: $response"
+          
+          # Parse values
+          current_uptime=$(echo "$response" | jq -r '.uptime // empty')
+          current_date=$(echo "$response" | jq -r '.date // empty')
+          
+          if [ -z "$current_uptime" ] || [ -z "$current_date" ]; then
+            echo "❌ Missing uptime or date in response"
+            continue
+          fi
+
+          # Convert date to timestamp
+          current_timestamp=$(date -d "$current_date" +%s 2>/dev/null || echo "invalid")
+          if [ "$current_timestamp" == "invalid" ]; then
+            echo "❌ Invalid date format: $current_date"
+            continue
+          fi
+
+          # Uptime validation
+          echo "Uptime: $current_uptime | Date: $current_date"
+          
+          # Check 1: Uptime should increase
+          if (( $(echo "$current_uptime <= $last_uptime" | bc -l) )); then
+            echo "⚠ Uptime decreased (last: $last_uptime, current: $current_uptime)"
+            restart_detected=true
+          fi
+          
+          # Check 2: Server date should be after container start
+          if (( current_timestamp < start_time )); then
+            echo "⚠ Server date is before container start"
+            restart_detected=true
+          fi
+
+          last_uptime=$current_uptime
+          last_date=$current_date
+          sleep 5
+        done
+
+        # Final evaluation
+        if $restart_detected; then
+          echo "❌ Server restart detected during checks"
+          docker logs uptime-test
+          docker stop uptime-test
+          exit 1
+        else
+          echo "✓ Uptime progression normal"
+          docker stop uptime-test
+          exit 0
+        fi

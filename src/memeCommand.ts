@@ -11,7 +11,7 @@ import path from 'path';
 const MEMES_DIR = path.join(mediaPath(), '/audio/memes');
 const MEME_API_BASE_URL = 'https://myinstants-api.vercel.app/';
 
-const memeQueries = ['Default', 'Trending', 'Trending (German)', 'Best', 'Best (German)', 'Rocket League', 'Custom'] as const;
+const memeQueries = ['Default', 'Trending', 'Trending (German)', 'Best', 'Best (German)', 'Rocket League', 'Recent', 'Custom'] as const;
 export type MemeQuery = typeof memeQueries[number];
 export function getMemeQueries(): readonly MemeQuery[] {
     return memeQueries;
@@ -19,19 +19,20 @@ export function getMemeQueries(): readonly MemeQuery[] {
 
 
 export function getMemeQuery(query: MemeQuery, custom: string | undefined) {
+    // see https://github.com/abdipr/myinstants-api?tab=readme-ov-file#-examples
     const memeQueryMap: { [key in MemeQuery]: string } = {
         'Default': defaultMemeAPIQuery() || 'best?q=de',
-        Trending: 'trending',
+        Trending: 'trending?q=us',
         'Trending (German)': 'trending?q=de',
         Best: 'best',
         'Best (German)': 'best?q=de',
         'Rocket League': 'search?q=rocket+league',
+        'Recent': 'recent',
         Custom: custom!
     };
 
     return memeQueryMap[query];
 }
-
 
 export async function getCachedOrDownloadMemes(count: number | undefined = undefined, memeQuery: MemeQuery = 'Default', customMemeQuery: string | undefined = undefined) {
     // Get memes from API

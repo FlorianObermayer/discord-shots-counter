@@ -52,26 +52,35 @@ export class InsultService {
         const playerHandles = await Promise.all(
             playerIds.map(it => usernameCache.getUsername(it.player_id))
         );
-        return playerHandles.map(it => it.replace('@', ''));
+        return playerHandles;
     }
 
-    async getAndCreateInsult(username: string, violationType: ViolationType) : Promise<string>{
+    async getAndCreateInsult(userId: string, violationType: ViolationType): Promise<string> {
+
+        const username = await usernameCache.getUsername(userId);
         const key = cacheKey(username, violationType);
-        let currentInsult : string | undefined = this.cache.get(key);
+        let currentInsult: string | undefined = this.cache.get(key);
+        this.cache.delete(key);
 
         if (!currentInsult) {
-            currentInsult = await generateInsult(username, violationType);
-
-            // Add a new insult to the cache but don't block doing that
-            void (async () => {
-                try {
-                    const newInsult = await generateInsult(username, violationType);
-                    this.cache.set(key, newInsult);
-                } catch (error) {
-                    logger.warn('Failed to generate and cache a new insult asynchronously', error);
-                }
-            })();
+            logger.warn('no insult found in cache, falling back to pre-generated insult');
+            currentInsult = this.getRandomBackupInsult(violationType);
         }
+
+        // Add a new insult to the cache but don't block doing that
+        void (async () => {
+            try {
+                logger.info('prefetching new insult...');
+                const newInsult = await generateInsult(username, violationType);
+                this.cache.set(key, newInsult);
+                this.cache.save();
+                logger.info('prefetching new insult... DONE');
+                logger.debug('new insult:', newInsult);
+
+            } catch (error) {
+                logger.warn('prefetching new insult...FAILED', error);
+            }
+        })();
 
         return currentInsult;
     }

@@ -1,6 +1,7 @@
 import sqlite3 from 'sqlite3';
-import { databasePath } from './envHelper';
+import { databaseFile } from './envHelper';
 import { ViolationType } from './violations';
+import logger from './logger';
 
 export class DatabaseService {
     sqlite: typeof sqlite3;
@@ -22,10 +23,10 @@ export class DatabaseService {
         this.connectionPromise = new Promise<sqlite3.Database>((resolve, reject) => {
             this.db = new this.sqlite.Database(this.databasePath, (err) => {
                 if (err) {
-                    console.error('Database connection error:', err);
+                    logger.error('Database connection error:', err);
                     reject(err);
                 } else {
-                    console.log(`Connected to ${this.databasePath} database`);
+                    logger.info(`Connected to ${this.databasePath} database`);
                     resolve(this.db!);
                 }
             });
@@ -234,7 +235,7 @@ export class DatabaseService {
 }
 
 // Factory function for creating database service instances
-export async function createDatabaseService(path = databasePath()) {
+export async function createDatabaseService(path = databaseFile()) {
     const dbService = new DatabaseService(path);
     await dbService._initializeDatabase();
     return dbService;

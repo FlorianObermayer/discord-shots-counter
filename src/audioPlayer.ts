@@ -2,8 +2,9 @@ import { AudioPlayerStatus, DiscordGatewayAdapterCreator, StreamType, VoiceConne
 import { Guild } from 'discord.js';
 import fs from 'fs';
 import { resolve as pathResolve } from 'path';
+import logger from './logger';
 
-export class AudioPlayerManager {
+class AudioPlayerManager {
     activeTimers: Map<string, NodeJS.Timeout>;
     guildId: string;
     adapterCreator: DiscordGatewayAdapterCreator;
@@ -62,7 +63,7 @@ export class AudioPlayerManager {
                 await this.playAudioFile(connection, randomSource);
 
             } catch (error) {
-                console.error('Playback error:', error);
+                logger.error('Playback error:', error);
             }
 
             // Schedule next playback with new random delay
@@ -88,4 +89,17 @@ export class AudioPlayerManager {
     private getRandomDelay(min: number, max: number) {
         return Math.floor(Math.random() * (max - min + 1)) + min;
     }
+}
+
+const instances: Map<string, AudioPlayerManager> = new Map();
+
+export function getOrCreateAudioPlayerManager(guild: Guild): AudioPlayerManager {
+
+    if (instances.has(guild.id)) {
+        return instances.get(guild.id) as AudioPlayerManager;
+    }
+
+    const manager = new AudioPlayerManager(guild);
+    instances.set(guild.id, manager);
+    return manager;
 }

@@ -1,5 +1,6 @@
 import { AllCommands } from './commands';
 import { appId, discordToken } from './envHelper';
+import logger from './logger';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function DiscordRequest(endpoint: string, options: { body?: any, method?: string } | undefined) {
@@ -21,7 +22,7 @@ export async function DiscordRequest(endpoint: string, options: { body?: any, me
   if (!res.ok) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const data = await res.json();
-    console.log(res.status);
+    logger.error(res.status);
     throw new Error(JSON.stringify(data));
   }
   // Return original response
@@ -33,14 +34,13 @@ export async function installGlobalCommands(appId: string, commands: Command[] =
   const endpoint = `applications/${appId}/commands`;
 
   try {
-    console.log(`Registering following commands: ${commands.map(it => it.name as string).join(',')}...`);
+    logger.info('Registering Commands...', commands.map(it => it.name as string));
     // This is calling the bulk overwrite endpoint: https://discord.com/developers/docs/interactions/application-commands#bulk-overwrite-global-application-commands
     await DiscordRequest(endpoint, { method: 'PUT', body: commands });
-    console.log('Registering commands DONE');
+    logger.info('Registering Commands... DONE');
 
   } catch (err) {
-    console.log('Registering commands FAILED');
-    console.error(err);
+    logger.error('Registering Commands... FAILED', err);
   }
 }
 export function capitalize(str: string) {

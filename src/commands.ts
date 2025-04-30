@@ -1,5 +1,6 @@
 import { ApplicationCommandOptionType, ApplicationCommandType, ApplicationIntegrationType, InteractionContextType } from 'discord.js';
 import { getViolationTypes } from './violations';
+import { getMemeQueries } from './memeCommand';
 
 type CommandName =
   'LIST_OPEN_SHOTS_COMMAND' |
@@ -83,6 +84,21 @@ export const Commands: Record<CommandName, Command> = {
     type: ApplicationCommandType.ChatInput,
     integrationTypes: [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall],
     contexts: [InteractionContextType.Guild, InteractionContextType.PrivateChannel],
+    options: [
+      {
+        name: 'meme_query',
+        description: 'A pre-defined query selection specifying which memes to tap in',
+        type: ApplicationCommandOptionType.String,
+        required: false,
+        choices: getMemeChoices(),
+      },
+      {
+        name: 'custom_meme_query',
+        description: 'A custom query specifying which memes to tap in. Has to be filled out if memeQuery is "Custom"',
+        type: ApplicationCommandOptionType.String,
+        required: false,
+      },
+    ]
   },
 
   START_RANDOM_MEMES_COMMAND: {
@@ -98,7 +114,7 @@ export const Commands: Record<CommandName, Command> = {
         type: ApplicationCommandOptionType.Integer,
         required: false,
         minValue: 5,
-        maxValue: 300
+        maxValue: 300,
       },
       {
         name: 'max_delay',
@@ -107,7 +123,27 @@ export const Commands: Record<CommandName, Command> = {
         required: false,
         minValue: 5,
         maxValue: 300
-      }
+      },
+      {
+        name: 'max_different_memes',
+        description: 'Maximum different Memes to get downloaded',
+        type: ApplicationCommandOptionType.Integer,
+        required: false,
+        minValue: 1
+      },
+      {
+        name: 'meme_query',
+        description: 'A pre-defined query selection specifying which memes to tap in',
+        type: ApplicationCommandOptionType.String,
+        required: false,
+        choices: getMemeChoices(),
+      },
+      {
+        name: 'custom_meme_query',
+        description: 'A custom query specifying which memes to tap in. Has to be filled out if memeQuery is "Custom"',
+        type: ApplicationCommandOptionType.String,
+        required: false,
+      },
     ]
   },
 
@@ -127,5 +163,13 @@ function getViolationChoices() {
   return violations.map((violation) => ({
     name: violation.toUpperCase(),
     value: violation,
+  }));
+}
+
+function getMemeChoices() {
+  const memeQueries = getMemeQueries();
+  return memeQueries.map((memeQuery) => ({
+    name: memeQuery.toUpperCase(),
+    value: memeQuery,
   }));
 }

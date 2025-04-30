@@ -2,9 +2,10 @@ import { InteractionResponseFlags, InteractionResponseType } from 'discord-inter
 import { Client } from 'discord.js';
 import fs from 'fs';
 import path from 'path';
-import { AudioPlayerManager } from './audioPlayer';
+import { getOrCreateAudioPlayerManager } from './audioPlayer';
 
 import { mediaPath } from './envHelper';
+import logger from './logger';
 
 export const MOTIVATIONS_DIR = path.join(mediaPath(), '/audio/motivations');
 export const MIMIMI_DIR = path.join(mediaPath(), 'audio/mimimi');
@@ -28,7 +29,7 @@ export async function handleAudioCommand(guildId: string, userId: string, client
         }
 
         const randomMP3 = getRandomFilePathFromDirectory(audioSourceDirectory);
-        const audioPlayer = new AudioPlayerManager(guild);
+        const audioPlayer = getOrCreateAudioPlayerManager(guild);
         const connection = audioPlayer.joinVoiceChannel(voiceChannelId);
 
         void audioPlayer.playAudioFile(connection, randomMP3);
@@ -41,7 +42,7 @@ export async function handleAudioCommand(guildId: string, userId: string, client
             }
         };
     } catch (error: unknown) {
-        console.error('Audio command error:', error);
+        logger.error('Audio command error:', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         return {
             type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,

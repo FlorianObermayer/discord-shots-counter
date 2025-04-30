@@ -10,57 +10,62 @@ import {
 } from 'discord-interactions';
 import { capitalize, getAllOpenShotsFormatted, deletePreviousMessage, installGlobalCommands } from './utils';
 import { createDatabaseService, DatabaseService } from './database';
-import { getRandomViolationDescription as getRandomViolationDescription, getViolationTypes, ViolationType } from './violations';
+import { getViolationTypes, ViolationType } from './violations';
 import usernameCache from './usernameCache';
-import { databasePath, discordToken, port, verifyEnv, publicKey, appId } from './envHelper';
+import { discordToken, port, verifyEnv, publicKey, appId, databaseFile } from './envHelper';
 import { Commands } from './commands';
 import { handleAudioCommand, MIMIMI_DIR, MOTIVATIONS_DIR } from './audioCommand';
 import {
   Client, IntentsBitField,
 } from 'discord.js';
-import { getCachedOrDownloadMemes, handleMemeCommand, handleStartRandomMemes, handleStopRandomMemes } from './memeCommand';
+import { getCachedOrDownloadMemes, handleMemeCommand, handleStartRandomMemes, handleStopRandomMemes, MemeQuery } from './memeCommand';
+import { InsultService } from './insultService';
+import logger from './logger';
 
 // Catch unhandled promise rejections
 process.on('unhandledRejection', (err) => {
-  console.error('Unhandled Rejection:', err);
+  logger.error('Unhandled Rejection:', err);
   process.exit(1);
 });
 
 // Catch uncaught exceptions
 process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err);
+  logger.error('Uncaught Exception:', err);
   process.exit(1);
 });
 
 verifyEnv();
 
 async function initializeApp() {
-  console.log('Starting server...');
+  logger.info('Starting server...');
 
   await installGlobalCommands(appId());
 
-  const db = await createDatabaseService(databasePath());
+  const db = await createDatabaseService(databaseFile());
 
-  console.log('Warming up meme cache...');
+  logger.info('Warming up meme cache...');
   void getCachedOrDownloadMemes().catch((e) => {
-    console.error('Error warming up meme cache:', e);
-  }).then(() => console.log('Meme cache warmed up.'));
-
-  return db;
+    logger.error('Warming up meme cache... FAILED', e);
+  }).then(() => logger.info('Warming up meme cache... DONE'));
+  const insultService = new InsultService(db);
+  await insultService.warmupInsultsCache();
+  return { db, insultService };
 }
 
 let db: DatabaseService;
+let insultService: InsultService;
 void (async () => {
-  db = await initializeApp();
+  ({ db, insultService } = await initializeApp());
 })();
 
 async function handleShot(response: Response, offender: string, violationType: ViolationType) {
   await db.addShot(offender, violationType);
 
+  const insult = await insultService.getAndCreateInsult(offender, violationType);
   const result = response.send({
     type: InteractionResponseType,
     data: {
-      content: `### Violation confirmed.\n<@${offender}> has to take a shot for **${capitalize(violationType)}**\n\n> ${getRandomViolationDescription(violationType)}.`,
+      content: `### Violation confirmed.\n<@${offender}> has to take a shot for **${capitalize(violationType)}**\n\n> ${insult}.`,
     }
   });
 
@@ -121,7 +126,7 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
   // TODO: Figure out why type causes "unsafe-assignment error"
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   const { type, data } = req.body;
-  //console.log('INTERACTION::body', req.body);
+  logger.debug('INTERACTION::body', req.body);
 
   /**
    * Handle verification requests
@@ -142,7 +147,10 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
     const userId: string = req.body.member.user.id;
 
     if (name === Commands['MEME_COMMAND'].name) {
-      const response = await handleMemeCommand(guildId, userId, client);
+      const memeQuery: MemeQuery = data.options[0]?.value as MemeQuery | undefined || 'Default';
+      const customMemeQuery = data.options[1]?.value;
+
+      const response = await handleMemeCommand(guildId, userId, client, memeQuery, customMemeQuery);
       res.send(response);
       return;
     }
@@ -150,8 +158,11 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
     if (name === Commands.START_RANDOM_MEMES_COMMAND.name) {
       const minDelay = Number(data.options ? data.options[0]?.value || 30 : 30); // defaults to 30 seconds
       const maxDelay = Number(data.options ? data.options[1]?.value || 60 : 60); // defaults to 60 seconds
+      const maxNumberOfDifferentMemes = Number(data.options ? data.options[2]?.value || 10 : 10); // defaults to 10 different memes
+      const memeQuery: MemeQuery = data.options[3]?.value as MemeQuery | undefined || 'Default';
+      const customMemeQuery = data.options[4]?.value;
 
-      const response = await handleStartRandomMemes(guildId, userId, client, minDelay, maxDelay);
+      const response = await handleStartRandomMemes(guildId, userId, client, minDelay, maxDelay, maxNumberOfDifferentMemes, memeQuery, customMemeQuery);
       res.send(response);
       return;
     }
@@ -175,8 +186,6 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
     }
 
     if (name === Commands.SHOT_NON_INTERACTIVE_COMMAND.name) {
-      console.log(data);
-
       const offender = data.options[0]?.value as string;
       const violation = data.options[1]?.value as ViolationType;
 
@@ -209,7 +218,7 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
                   // Value for your app to identify the select menu interactions
                   custom_id: 'cancel_redeem_button_offender=' + offender,
                   style: ButtonStyleTypes.DANGER,
-                  label: 'I Lied',
+                  label: 'I lied',
                 },
               ]
             }
@@ -255,7 +264,7 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
       return;
     }
 
-    console.error(`unknown command: ${name}`);
+    logger.error(`unknown command: ${name}`);
     res.status(400).json({ error: 'unknown command' });
   }
 
@@ -393,7 +402,7 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
       // get the associated game ID
       const offender = componentId.split('=')[1]?.split(',')[0] as string;
       const { redeemed, violationType } = await db.redeemShot(offender);
-      const content = redeemed ? `### Shot redemption confirmed.\n<@${offender}> took a shot for **${capitalize(violationType!)}**.` : `### <@${offender}> is an absolute alcoholic. They didn't have to drink but hey, enjoy! Maybe you actually start hitting the ball soon!`;
+      const content = redeemed ? `### Shot redemption confirmed.\n<@${offender}> took a shot for **${capitalize(violationType as string)}**.` : `### <@${offender}> is an absolute alcoholic. They didn't have to drink but hey, enjoy! Maybe you actually start hitting the ball soon!`;
 
       res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -407,12 +416,12 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
     }
   }
 
-  console.error('unknown interaction type', type);
+  logger.error('unknown interaction type', type);
   res.status(400).json({ error: 'unknown interaction type' });
 });
 
 app.listen(PORT, () => {
-  console.log('Listening on port', PORT);
+  logger.info('Listening on port', PORT);
 });
 
 

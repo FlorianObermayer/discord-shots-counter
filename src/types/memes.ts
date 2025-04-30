@@ -2,10 +2,11 @@ const memeQueries = [
     'Default',
     'Trending',
     'Trending (German)',
-    'Best', 'Best (German)',
+    'Best',
+    'Best (German)',
     'Rocket League',
     'Recent',
-    'Custom'] as const;
+    'Custom Search'] as const;
 
 export type MemeQuery = (typeof memeQueries)[number];
 

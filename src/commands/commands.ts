@@ -93,8 +93,8 @@ export const Commands: Record<CommandName, Command> = {
         choices: getMemeChoices(),
       },
       {
-        name: 'custom_meme_query',
-        description: 'A custom query specifying which memes to tap in. Has to be filled out if memeQuery is "Custom"',
+        name: 'custom_search_query',
+        description: 'A custom search term specifying which memes to tap in. Required if memeQuery is "Custom Search"',
         type: ApplicationCommandOptionType.String,
         required: false,
       },
@@ -139,8 +139,8 @@ export const Commands: Record<CommandName, Command> = {
         choices: getMemeChoices(),
       },
       {
-        name: 'custom_meme_query',
-        description: 'A custom query specifying which memes to tap in. Has to be filled out if memeQuery is "Custom"',
+        name: 'custom_search_query',
+        description: 'A custom search term specifying which memes to tap in. Required if memeQuery is "Custom Search"',
         type: ApplicationCommandOptionType.String,
         required: false,
       },
@@ -155,7 +155,8 @@ export const Commands: Record<CommandName, Command> = {
     contexts: [InteractionContextType.Guild, InteractionContextType.PrivateChannel],
   },
 
-};
+} as const;
+
 export const AllCommands: Command[] = Object.values(Commands);
 
 function getViolationChoices() {

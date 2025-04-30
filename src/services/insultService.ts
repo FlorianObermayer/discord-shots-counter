@@ -79,15 +79,15 @@ class InsultService implements IInsultService{
         // Add a new insult to the cache but don't block doing that
         void (async () => {
             try {
-                logger.info('prefetching new insult...');
+                logger.debug('prefetching new insult...');
                 const newInsult = await generateInsult(username, violationType);
                 this.cache.set(key, newInsult);
                 this.cache.save();
-                logger.info('prefetching new insult... DONE');
+                logger.debug('prefetching new insult... DONE');
                 logger.debug('new insult:', newInsult);
 
             } catch (error) {
-                logger.warn('prefetching new insult...FAILED', error);
+                logger.warn('prefetching new insult... FAILED', error);
             }
         })();
 

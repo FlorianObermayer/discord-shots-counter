@@ -115,7 +115,7 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
 
     const userId: string = req.body.member.user.id;
 
-    if (name === Commands['MEME_COMMAND'].name) {
+    if (name === Commands.MEME_COMMAND.name) {
       const memeQuery: MemeQuery = data.options ? data.options[0]?.value as MemeQuery | undefined || 'Default' : 'Default';
       const customMemeQuery = data.options ? data.options[1]?.value : undefined;
 

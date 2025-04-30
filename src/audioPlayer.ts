@@ -28,8 +28,8 @@ class AudioPlayerManager {
 
     async playTTS(voiceChannelId: string, content: string) {
         const channel = await this.guild.channels.fetch(voiceChannelId) as VoiceChannel;
-        const message = await channel.send({ tts: true, content: content });
-        logger.info('Sent message', message);
+        const message = await channel.send({ tts: true, content: content, flags: 'SuppressNotifications' });
+        logger.debug('Sent message', message);
     }
 
     async playAudioFile(connection: VoiceConnection, filePath: string) {

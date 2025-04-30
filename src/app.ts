@@ -59,29 +59,33 @@ void (async () => {
   ({ db, insultService } = await initializeApp());
 })();
 
+async function insultViaTTS(guildId: string, offender: string, client: Client, insultText: string) {
+  try {
+    logger.info('Insult via TTS...');
+
+    const guild = await client.guilds.fetch(guildId);
+    const member = await guild.members.fetch(offender);
+    const voiceChannelId = member.voice?.channelId;
+
+    if (voiceChannelId !== null) {
+      const audioPlayerManager = getOrCreateAudioPlayerManager(guild);
+      await audioPlayerManager.playTTS(voiceChannelId, insultText);
+      logger.info('Insult via TTS... DONE');
+    } else {
+      logger.info('Insult via TTS... CANCELED (no voice Channel available)');
+    }
+  } catch (error) {
+    logger.warn('Insult TTS...FAILED', error);
+  }
+}
+
 async function handleShot(guildId: string, client: Client, response: Response, offender: string, violationType: ViolationType) {
   await db.addShot(offender, violationType);
 
   const insult = await insultService.getAndCreateInsult(offender, violationType);
 
   void (async () => {
-    try {
-      logger.info('Insult via TTS...');
-
-      const guild = await client.guilds.fetch(guildId);
-      const member = await guild.members.fetch(offender);
-      const voiceChannelId = member.voice?.channelId;
-
-      if (voiceChannelId !== null) {
-        const audioPlayerManager = getOrCreateAudioPlayerManager(guild);
-        await audioPlayerManager.playTTS(voiceChannelId, insult);
-        logger.info('Insult via TTS... DONE');
-      } else {
-        logger.info('Insult via TTS... CANCELED (no voice Channel available)');
-      }
-    } catch (error) {
-      logger.warn('Insult TTS...FAILED', error);
-    }
+    await insultViaTTS(guildId, offender, client, insult);
   })();
 
   const result = response.send({
@@ -410,10 +414,17 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
 
     if (componentId.startsWith('cancel_redeem_button_')) {
       const offender = componentId.split('=')[1];
+
+      const content = `### You fucking liar. That will cost you another shot!\n@here: Please punish the filthy liar <@${offender}>!`;
+
+      void (async () => {
+        await insultViaTTS(guild_id, offender!, client, content);
+      })();
+
       res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
-          content: `### You fucking liar. That will cost you another shot!\n@here: Please punish the filthy liar <@${offender}>!`,
+          content: content,
         }
       });
 

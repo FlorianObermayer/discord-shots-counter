@@ -20,3 +20,15 @@ type DiscordInteractionRequest = {
     id: string;
   }
 };
+
+
+type MessageComponentResponse = {
+  type: InteractionResponseType;
+  data?: {
+    flags?: InteractionResponseFlags;
+    components?: ActionRow[];
+    content?: string
+  };
+};
+
+type ErrorResponse = { error: string }

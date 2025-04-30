@@ -6,22 +6,24 @@ import {
   MessageComponentTypes,
   verifyKeyMiddleware,
   ButtonStyleTypes,
-  ActionRow,
 } from 'discord-interactions';
-import { capitalize, getAllOpenShotsFormatted, deletePreviousMessage, installGlobalCommands } from './utils';
-import { createDatabaseService, DatabaseService } from './database';
-import { getViolationTypes, ViolationType } from './violations';
-import usernameCache from './usernameCache';
+import { capitalize, insultViaTTS } from './utils';
+import { deletePreviousMessage } from './discordApi';
+import { installGlobalCommands } from './discordApi';
+import { databaseServiceFactory, IDatabaseService } from './services/databaseService';
+import { getViolationTypes, ViolationType } from './types/violations';
 import { discordToken, port, verifyEnv, publicKey, appId, databaseFile } from './envHelper';
-import { Commands } from './commands';
-import { handleAudioCommand, MIMIMI_DIR, MOTIVATIONS_DIR } from './audioCommand';
+import { Commands } from './commands/commands';
+import { handleAudio, MIMIMI_DIR, MOTIVATIONS_DIR } from './commands/audioCommand';
 import {
   Client, IntentsBitField,
 } from 'discord.js';
-import { getCachedOrDownloadMemes, handleMemeCommand, handleStartRandomMemes, handleStopRandomMemes, MemeQuery } from './memeCommand';
-import { InsultService } from './insultService';
+import { handleMemeCommand, handleStartRandomMemes, handleStopRandomMemes } from './commands/memeCommand';
+import { MemeQuery } from './types/memes';
+import { IInsultService, insultServiceFactory } from './services/insultService';
+import { IMemeService, memeServiceFactory } from './services/memeService';
 import logger from './logger';
-import { getOrCreateAudioPlayerManager } from './audioPlayer';
+import { handleListAllShots, handleShot } from './commands/shotCommand';
 
 // Catch unhandled promise rejections
 process.on('unhandledRejection', (err) => {
@@ -42,91 +44,32 @@ async function initializeApp() {
 
   await installGlobalCommands(appId());
 
-  const db = await createDatabaseService(databaseFile());
+  const db = await databaseServiceFactory.create(databaseFile());
 
-  logger.info('Warming up meme cache...');
-  void getCachedOrDownloadMemes().catch((e) => {
-    logger.error('Warming up meme cache... FAILED', e);
-  }).then(() => logger.info('Warming up meme cache... DONE'));
-  const insultService = new InsultService(db);
+  const memeService = memeServiceFactory.create();
+  await memeService.warmupMemeCache();
+
+  const insultService = insultServiceFactory.create(db);
   await insultService.warmupInsultsCache();
-  return { db, insultService };
-}
 
-let db: DatabaseService;
-let insultService: InsultService;
-void (async () => {
-  ({ db, insultService } = await initializeApp());
-})();
 
-async function insultViaTTS(guildId: string, offender: string, client: Client, insultText: string) {
-  try {
-    logger.info('Insult via TTS...');
-
-    const guild = await client.guilds.fetch(guildId);
-    const member = await guild.members.fetch(offender);
-    const voiceChannelId = member.voice?.channelId;
-
-    if (voiceChannelId !== null) {
-      const audioPlayerManager = getOrCreateAudioPlayerManager(guild);
-      await audioPlayerManager.playTTS(voiceChannelId, insultText);
-      logger.info('Insult via TTS... DONE');
-    } else {
-      logger.info('Insult via TTS... CANCELED (no voice Channel available)');
-    }
-  } catch (error) {
-    logger.warn('Insult TTS...FAILED', error);
-  }
-}
-
-async function handleShot(guildId: string, client: Client, response: Response, offender: string, violationType: ViolationType) {
-  await db.addShot(offender, violationType);
-
-  const insult = await insultService.getAndCreateInsult(offender, violationType);
-
-  void (async () => {
-    await insultViaTTS(guildId, offender, client, insult);
-  })();
-
-  const result = response.send({
-    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-    data: {
-      content: `### Violation confirmed.\n<@${offender}> has to take a shot for **${capitalize(violationType)}**\n\n> ${insult}.`,
-    }
+  // Initialize Discord Client
+  const client = new Client({
+    intents: [IntentsBitField.Flags.Guilds, IntentsBitField.Flags.GuildVoiceStates]
   });
+  void client.login(discordToken());
 
-  return result;
+  return { db, client, insultService, memeService };
 }
 
-async function listAllShotsChannelMessage(isPublic: boolean) {
+let db: IDatabaseService;
+let client: Client;
 
-  const dbShots = await db.getAllOpenShots();
-
-  const shots = await Promise.all(dbShots.map(async function (shot) {
-    const playerId = shot.player_id;
-    const openShots = shot.open_shots;
-    return {
-      name: await usernameCache.getUsername(playerId),
-      open_shots: openShots,
-    };
-  }));
-
-  const shotsFormatted = getAllOpenShotsFormatted(shots);
-
-  return {
-    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-    data: {
-      flags: !isPublic ? InteractionResponseFlags.EPHEMERAL : 0,
-      content: shotsFormatted,
-    },
-  };
-}
-
-// Initialize Discord Client
-const client = new Client({
-  intents: [IntentsBitField.Flags.Guilds, IntentsBitField.Flags.GuildVoiceStates]
-});
-void client.login(discordToken());
+let insultService: IInsultService;
+let memeService: IMemeService;
+await (async () => {
+  ({ db, client, insultService, memeService } = await initializeApp());
+})();
 
 // Create an express app
 const app = express();
@@ -148,7 +91,7 @@ app.router.get('/health', function (_, res) {
  * Interactions endpoint URL where Discord will send HTTP requests
  * Parse request body and verifies incoming requests using discord-interactions package
  */
-app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req: Request<unknown, Response, DiscordInteractionRequest>, res: Response): Promise<void> {
+app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req: Request<unknown, Response, DiscordInteractionRequest>, res: Response<MessageComponentResponse | ErrorResponse>): Promise<void> {
   // TODO: Figure out why type causes "unsafe-assignment error"
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   const { type, data, guild_id } = req.body;
@@ -170,14 +113,13 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
   if (type === InteractionType.APPLICATION_COMMAND) {
     const { name } = data;
 
-
     const userId: string = req.body.member.user.id;
 
     if (name === Commands['MEME_COMMAND'].name) {
       const memeQuery: MemeQuery = data.options[0]?.value as MemeQuery | undefined || 'Default';
       const customMemeQuery = data.options[1]?.value;
 
-      const response = await handleMemeCommand(guild_id, userId, client, memeQuery, customMemeQuery);
+      const response = await handleMemeCommand(memeService, guild_id, userId, client, memeQuery, customMemeQuery);
       res.send(response);
       return;
     }
@@ -189,7 +131,7 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
       const memeQuery: MemeQuery = data.options[3]?.value as MemeQuery | undefined || 'Default';
       const customMemeQuery = data.options[4]?.value;
 
-      const response = await handleStartRandomMemes(guild_id, userId, client, minDelay, maxDelay, maxNumberOfDifferentMemes, memeQuery, customMemeQuery);
+      const response = await handleStartRandomMemes(memeService, guild_id, userId, client, minDelay, maxDelay, maxNumberOfDifferentMemes, memeQuery, customMemeQuery);
       res.send(response);
       return;
     }
@@ -201,13 +143,13 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
     }
 
     if (name === Commands.MOTIVATE_COMMAND.name) {
-      const response = await handleAudioCommand(guild_id, userId, client, MOTIVATIONS_DIR);
+      const response = await handleAudio(guild_id, userId, client, MOTIVATIONS_DIR);
       res.send(response);
       return;
     }
 
     if (name === Commands.MIMIMI_COMMAND.name) {
-      const response = await handleAudioCommand(guild_id, userId, client, MIMIMI_DIR);
+      const response = await handleAudio(guild_id, userId, client, MIMIMI_DIR);
       res.send(response);
       return;
     }
@@ -216,7 +158,7 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
       const offender = data.options[0]?.value as string;
       const violation = data.options[1]?.value as ViolationType;
 
-      await handleShot(guild_id, client, res, offender, violation);
+      res.send(await handleShot(db, insultService, guild_id, client, offender, violation));
       return;
     }
 
@@ -258,7 +200,7 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
 
     if (name === Commands.LIST_OPEN_SHOTS_COMMAND.name) {
       // List all open shots
-      res.send(await listAllShotsChannelMessage(true));
+      res.send(await handleListAllShots(db, true));
       return;
     }
 
@@ -303,15 +245,6 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
     // custom_id set in payload when sending message component
     const componentId = data.custom_id as string;
 
-
-    type MessageComponentResponseType = {
-      type: InteractionResponseType;
-      data: {
-        flags?: InteractionResponseFlags;
-        components: ActionRow[]
-      };
-    };
-
     if (componentId === 'offender_select') {
 
       res.send({
@@ -343,7 +276,7 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
             },
           ],
         },
-      } as MessageComponentResponseType);
+      });
 
       await deletePreviousMessage(req.body.token, req.body.message.id);
       return;
@@ -392,7 +325,7 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
       const offender = componentId.split('=')[1]?.split(',')[0] as string;
       const violation = componentId.split(',')[1]?.split('=')[1] as ViolationType;
 
-      await handleShot(guild_id, client, res, offender, violation);
+      res.send(await handleShot(db, insultService, guild_id, client, offender, violation));
 
       await deletePreviousMessage(req.body.token, req.body.message.id);
 

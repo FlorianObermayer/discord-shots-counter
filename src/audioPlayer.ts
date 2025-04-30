@@ -1,6 +1,6 @@
 import { AudioPlayerStatus, DiscordGatewayAdapterCreator, StreamType, VoiceConnection, createAudioPlayer, createAudioResource, joinVoiceChannel } from '@discordjs/voice';
 import { Guild, VoiceChannel } from 'discord.js';
-import fs from 'fs';
+import fs, { PathLike } from 'fs';
 import { resolve as pathResolve } from 'path';
 import logger from './logger';
 
@@ -32,9 +32,9 @@ class AudioPlayerManager {
         logger.debug('Sent message', message);
     }
 
-    async playAudioFile(connection: VoiceConnection, filePath: string) {
+    async playAudioFile(connection: VoiceConnection, filePath: PathLike) {
         const
-            absolutePath = pathResolve(filePath),
+            absolutePath = pathResolve(filePath.toString()),
             player = createAudioPlayer(),
             resource = createAudioResource(absolutePath, {
                 inlineVolume: true,
@@ -42,7 +42,7 @@ class AudioPlayerManager {
             });
 
         if (!fs.existsSync(absolutePath)) {
-            throw new Error(`Audio file missing: ${filePath}`);
+            throw new Error(`Audio file missing: ${filePath.toString()}`);
         }
 
         player.play(resource);

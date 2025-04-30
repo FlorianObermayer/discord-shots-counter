@@ -1,9 +1,24 @@
 import sqlite3 from 'sqlite3';
-import { databaseFile } from './envHelper';
-import { ViolationType } from './violations';
-import logger from './logger';
+import { databaseFile } from '../envHelper';
+import { ViolationType } from '../types/violations';
+import logger from '../logger';
 
-export class DatabaseService {
+export interface IDatabaseService {
+    disconnect(): Promise<void>;
+    addShot(playerId: string, violationType: ViolationType): Promise<number>;
+    getPlayerShots(playerId: string): Promise<{ total_shots: number; open_shots: number; redeemed_shots: number; }>
+    redeemShot(playerId: string): Promise<{ changes: number; redeemed: boolean; violationType?: ViolationType; }> 
+    redeemAllShots(playerId: string): Promise<number>;
+    getAllOpenShots(): Promise<{ player_id: string, open_shots: number }[]>;
+    getLastShot(playerId: string): Promise<{ violationType: ViolationType; date: Date; redeemed: boolean; } | null>;
+    getAllPlayers(): Promise<{ player_id: string }[]>;
+}
+
+interface IDatabaseServiceFactory {
+    create(path : string) : Promise<IDatabaseService>
+}
+
+class DatabaseService implements IDatabaseService {
     sqlite: typeof sqlite3;
     databasePath: string;
     db: sqlite3.Database | null;
@@ -137,7 +152,7 @@ export class DatabaseService {
         };
     }
 
-    async redeemShot(playerId: string) {
+    async redeemShot(playerId: string): Promise<{ changes: number; redeemed: boolean; violationType?: ViolationType; }> {
         try {
             await this.runQuery('BEGIN TRANSACTION');
 
@@ -180,7 +195,7 @@ export class DatabaseService {
         }
     }
 
-    async redeemAllShots(playerId: string) {
+    async redeemAllShots(playerId: string) : Promise<number> {
         const result = await this.runQuery(
             `UPDATE shot_results 
              SET redeemed = 1 
@@ -200,7 +215,8 @@ export class DatabaseService {
     }
 
     async getLastShot(playerId: string): Promise<{
-        violationType: ViolationType; date: Date;
+        violationType: ViolationType;
+        date: Date;
         redeemed: boolean;
     } | null> {
         const row = await this.getQuery<{
@@ -231,12 +247,12 @@ export class DatabaseService {
             'SELECT DISTINCT player_id FROM shot_results'
         );
     }
-
 }
 
-// Factory function for creating database service instances
-export async function createDatabaseService(path = databaseFile()) {
-    const dbService = new DatabaseService(path);
-    await dbService._initializeDatabase();
-    return dbService;
-}
+export const databaseServiceFactory: IDatabaseServiceFactory = {
+    async create(path = databaseFile()): Promise<IDatabaseService> {
+        const dbService = new DatabaseService(path);
+        await dbService._initializeDatabase();
+        return dbService;
+    }
+};

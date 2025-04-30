@@ -1,6 +1,6 @@
 import { ApplicationCommandOptionType, ApplicationCommandType, ApplicationIntegrationType, InteractionContextType } from 'discord.js';
-import { getViolationTypes } from './violations';
-import { getMemeQueries } from './memeCommand';
+import { getViolationTypes } from '../types/violations';
+import { getMemeQueries } from '../types/memes';
 
 type CommandName =
   'LIST_OPEN_SHOTS_COMMAND' |

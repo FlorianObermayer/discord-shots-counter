@@ -1,20 +1,29 @@
-import { DatabaseService } from './database';
-import usernameCache from './usernameCache';
-import { generateInsult } from './deepseekTextProvider';
+import { IDatabaseService } from './databaseService';
+import usernameCache from '../usernameCache';
+import { generateInsult } from '../deepseekTextProvider';
 import { create, FlatCache } from 'flat-cache';
-import { cacheFolder } from './envHelper';
-import logger from './logger';
-import { getViolationTypes, ViolationType } from './violations';
+import { cacheFolder } from '../envHelper';
+import logger from '../logger';
+import { getViolationTypes, ViolationType } from '../types/violations';
 
 function cacheKey(username: string, violationType: ViolationType): string {
     return `${username}|${violationType}`;
 }
 
-export class InsultService {
-    private db: DatabaseService;
+export interface IInsultService {
+    warmupInsultsCache(): Promise<void>;
+    getAndCreateInsult(userId: string, violationType: ViolationType): Promise<string>;
+}
+
+interface IInsultServiceFactory {
+    create(db: IDatabaseService) : IInsultService
+}
+
+class InsultService implements IInsultService{
+    private db: IDatabaseService;
     private cache: FlatCache;
 
-    constructor(db: DatabaseService,) {
+    constructor(db: IDatabaseService,) {
         this.db = db;
 
         this.cache = create({
@@ -137,4 +146,10 @@ const BackupInsults: {
         'The only thing worse than your excuses is your gameplay. Chug to numb the pain.',
         'Keep lying and we’ll start a drinking game just for your terrible excuses.',
     ],
+};
+
+export const insultServiceFactory: IInsultServiceFactory = {
+    create: function (db: IDatabaseService): IInsultService {
+        return new InsultService(db);
+    }
 };

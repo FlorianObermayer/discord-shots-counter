@@ -2,10 +2,10 @@ import { InteractionResponseFlags, InteractionResponseType } from 'discord-inter
 import { Client } from 'discord.js';
 import fs from 'fs';
 import path from 'path';
-import { getOrCreateAudioPlayerManager } from './audioPlayer';
+import { getOrCreateAudioPlayerManager } from '../audioPlayer';
 
-import { mediaPath } from './envHelper';
-import logger from './logger';
+import { mediaPath } from '../envHelper';
+import logger from '../logger';
 
 export const MOTIVATIONS_DIR = path.join(mediaPath(), '/audio/motivations');
 export const MIMIMI_DIR = path.join(mediaPath(), 'audio/mimimi');
@@ -18,7 +18,7 @@ function getRandomFilePathFromDirectory(directoryPath: string): string {
     return filePaths[Math.floor(Math.random() * filePaths.length)]!;
 }
 
-export async function handleAudioCommand(guildId: string, userId: string, client: Client, audioSourceDirectory: string) {
+export async function handleAudio(guildId: string, userId: string, client: Client, audioSourceDirectory: string) {
     try {
         const guild = await client.guilds.fetch(guildId);
         const member = await guild.members.fetch(userId);

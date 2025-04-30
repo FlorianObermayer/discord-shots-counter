@@ -1,10 +1,10 @@
-import { createDatabaseService } from '../database';
-import { getViolationTypes } from '../violations';
+import { databaseServiceFactory } from '../services/databaseService';
+import { getViolationTypes } from '../types/violations';
 
 describe('Integration Tests', () => {
     test('smoke test', async () => {
 
-        const db = await createDatabaseService(':memory:');
+        const db = await databaseServiceFactory.create(':memory:');
 
         const userId1 = '1';
         const userId2 = '2';
@@ -72,7 +72,7 @@ describe('Scaffolding', () => {
 
     test('create initial shots in db', async () => {
 
-        const db = await createDatabaseService(':memory:');
+        const db = await databaseServiceFactory.create(':memory:');
 
         async function createShots(playerId: string, count: number) {
             for (let i = 0; i < count; i++) {

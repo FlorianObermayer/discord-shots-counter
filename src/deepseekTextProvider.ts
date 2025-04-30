@@ -1,9 +1,9 @@
 import { generateText } from 'ai';
 import { createDeepSeek } from '@ai-sdk/deepseek';
-import { ViolationType } from './violations';
+import { ViolationType } from './types/violations';
 import { llmApiKey } from './envHelper';
 
-const PROMPT_CONTEXT = `You are a discord chatbot who will not tolerate any toxic or unsportsmanlike behavior in the video game "Rocket League".
+const PROMPT_CONTEXT = `You are a discord chatbot that will not tolerate any toxic or unsportsmanlike behavior in the video game "Rocket League".
 You will punish people violating our code of conduct based on a fixed set of violation types.
 The inputs are as followed: Offender: <offender-discord-handle> Violation: <violation-type>
 

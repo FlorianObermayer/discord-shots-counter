@@ -1,4 +1,4 @@
-import { getUsernameFromId } from './utils';
+import { getUsernameFromId } from './discordApi';
 
 class UsernameCache {
     private cache: Map<string, string>;

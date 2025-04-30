@@ -10,5 +10,5 @@ const violationTypes = [
 export type ViolationType = typeof violationTypes[number];
 
 export function getViolationTypes(): readonly ViolationType[] {
-  return violationTypes;
+    return violationTypes;
 }

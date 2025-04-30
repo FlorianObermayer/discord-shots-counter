@@ -116,8 +116,8 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
     const userId: string = req.body.member.user.id;
 
     if (name === Commands['MEME_COMMAND'].name) {
-      const memeQuery: MemeQuery = data.options[0]?.value as MemeQuery | undefined || 'Default';
-      const customMemeQuery = data.options[1]?.value;
+      const memeQuery: MemeQuery = data.options ? data.options[0]?.value as MemeQuery | undefined || 'Default' : 'Default';
+      const customMemeQuery = data.options ? data.options[1]?.value : undefined;
 
       const response = await handleMemeCommand(memeService, guild_id, userId, client, memeQuery, customMemeQuery);
       res.send(response);
@@ -129,7 +129,7 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
       const maxDelay = Number(data.options ? data.options[1]?.value || 60 : 60); // defaults to 60 seconds
       const maxNumberOfDifferentMemes = Number(data.options ? data.options[2]?.value || 10 : 10); // defaults to 10 different memes
       const memeQuery: MemeQuery = data.options[3]?.value as MemeQuery | undefined || 'Default';
-      const customMemeQuery = data.options[4]?.value;
+      const customMemeQuery = data.options ? data.options[4]?.value : undefined;
 
       const response = await handleStartRandomMemes(memeService, guild_id, userId, client, minDelay, maxDelay, maxNumberOfDifferentMemes, memeQuery, customMemeQuery);
       res.send(response);

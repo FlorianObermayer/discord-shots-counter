@@ -21,6 +21,7 @@ export function getAllOpenShotsFormatted(shots: { name: string, open_shots: numb
 export function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Unknown error';
 }
+
 export async function insultViaTTS(guildId: string, offender: string, client: Client, insultText: string) {
   try {
     logger.info('Insult via TTS...');

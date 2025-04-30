@@ -161,7 +161,7 @@ export const AllCommands: Command[] = Object.values(Commands);
 function getViolationChoices() {
   const violations = getViolationTypes();
   return violations.map((violation) => ({
-    name: violation.toUpperCase(),
+    name: violation,
     value: violation,
   }));
 }
@@ -169,7 +169,7 @@ function getViolationChoices() {
 function getMemeChoices() {
   const memeQueries = getMemeQueries();
   return memeQueries.map((memeQuery) => ({
-    name: memeQuery.toUpperCase(),
+    name: memeQuery,
     value: memeQuery,
   }));
 }

@@ -1,16 +1,18 @@
 import { AudioPlayerStatus, DiscordGatewayAdapterCreator, StreamType, VoiceConnection, createAudioPlayer, createAudioResource, joinVoiceChannel } from '@discordjs/voice';
-import { Guild } from 'discord.js';
+import { Guild, VoiceChannel } from 'discord.js';
 import fs from 'fs';
 import { resolve as pathResolve } from 'path';
 import logger from './logger';
 
 class AudioPlayerManager {
     activeTimers: Map<string, NodeJS.Timeout>;
+    guild: Guild;
     guildId: string;
     adapterCreator: DiscordGatewayAdapterCreator;
 
     constructor(guild: Guild) {
         this.activeTimers = new Map();
+        this.guild = guild;
         this.guildId = guild.id;
         this.adapterCreator = guild.voiceAdapterCreator;
     }
@@ -22,6 +24,12 @@ class AudioPlayerManager {
             guildId: this.guildId,
         });
         return connection;
+    }
+
+    async playTTS(voiceChannelId: string, content: string) {
+        const channel = await this.guild.channels.fetch(voiceChannelId) as VoiceChannel;
+        const message = await channel.send({ tts: true, content: content });
+        logger.info('Sent message', message);
     }
 
     async playAudioFile(connection: VoiceConnection, filePath: string) {

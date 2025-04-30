@@ -64,11 +64,11 @@ export async function getUsernameFromId(id: string) {
   const res = await DiscordRequest(`/users/${id}`, {
     method: 'GET',
   });
-  const user = await res.json() as { username: string };
+  const user = await res.json() as { global_name: string };
   // Return the user's handle or throw an error if not found
   if (user)
     // Format the username as @username
-  { return `@${user.username}`; }
+  { return `@${user.global_name}`; }
   throw new Error('User not found');
 }
 

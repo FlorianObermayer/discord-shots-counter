@@ -21,6 +21,7 @@ import {
 import { getCachedOrDownloadMemes, handleMemeCommand, handleStartRandomMemes, handleStopRandomMemes, MemeQuery } from './memeCommand';
 import { InsultService } from './insultService';
 import logger from './logger';
+import { getOrCreateAudioPlayerManager } from './audioPlayer';
 
 // Catch unhandled promise rejections
 process.on('unhandledRejection', (err) => {
@@ -58,12 +59,33 @@ void (async () => {
   ({ db, insultService } = await initializeApp());
 })();
 
-async function handleShot(response: Response, offender: string, violationType: ViolationType) {
+async function handleShot(guildId: string, client: Client, response: Response, offender: string, violationType: ViolationType) {
   await db.addShot(offender, violationType);
 
   const insult = await insultService.getAndCreateInsult(offender, violationType);
+
+  void (async () => {
+    try {
+      logger.info('Insult via TTS...');
+
+      const guild = await client.guilds.fetch(guildId);
+      const member = await guild.members.fetch(offender);
+      const voiceChannelId = member.voice?.channelId;
+
+      if (voiceChannelId !== null) {
+        const audioPlayerManager = getOrCreateAudioPlayerManager(guild);
+        await audioPlayerManager.playTTS(voiceChannelId, insult);
+        logger.info('Insult via TTS... DONE');
+      } else {
+        logger.info('Insult via TTS... CANCELED (no voice Channel available)');
+      }
+    } catch (error) {
+      logger.warn('Insult TTS...FAILED', error);
+    }
+  })();
+
   const result = response.send({
-    type: InteractionResponseType,
+    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
     data: {
       content: `### Violation confirmed.\n<@${offender}> has to take a shot for **${capitalize(violationType)}**\n\n> ${insult}.`,
     }
@@ -125,7 +147,8 @@ app.router.get('/health', function (_, res) {
 app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req: Request<unknown, Response, DiscordInteractionRequest>, res: Response): Promise<void> {
   // TODO: Figure out why type causes "unsafe-assignment error"
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-  const { type, data } = req.body;
+  const { type, data, guild_id } = req.body;
+
   logger.debug('INTERACTION::body', req.body);
 
   /**
@@ -143,14 +166,14 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
   if (type === InteractionType.APPLICATION_COMMAND) {
     const { name } = data;
 
-    const guildId: string = req.body.guild_id;
+
     const userId: string = req.body.member.user.id;
 
     if (name === Commands['MEME_COMMAND'].name) {
       const memeQuery: MemeQuery = data.options[0]?.value as MemeQuery | undefined || 'Default';
       const customMemeQuery = data.options[1]?.value;
 
-      const response = await handleMemeCommand(guildId, userId, client, memeQuery, customMemeQuery);
+      const response = await handleMemeCommand(guild_id, userId, client, memeQuery, customMemeQuery);
       res.send(response);
       return;
     }
@@ -162,25 +185,25 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
       const memeQuery: MemeQuery = data.options[3]?.value as MemeQuery | undefined || 'Default';
       const customMemeQuery = data.options[4]?.value;
 
-      const response = await handleStartRandomMemes(guildId, userId, client, minDelay, maxDelay, maxNumberOfDifferentMemes, memeQuery, customMemeQuery);
+      const response = await handleStartRandomMemes(guild_id, userId, client, minDelay, maxDelay, maxNumberOfDifferentMemes, memeQuery, customMemeQuery);
       res.send(response);
       return;
     }
 
     if (name === Commands.STOP_RANDOM_MEMES_COMMAND.name) {
-      const response = await handleStopRandomMemes(guildId, userId, client);
+      const response = await handleStopRandomMemes(guild_id, userId, client);
       res.send(response);
       return;
     }
 
     if (name === Commands.MOTIVATE_COMMAND.name) {
-      const response = await handleAudioCommand(guildId, userId, client, MOTIVATIONS_DIR);
+      const response = await handleAudioCommand(guild_id, userId, client, MOTIVATIONS_DIR);
       res.send(response);
       return;
     }
 
     if (name === Commands.MIMIMI_COMMAND.name) {
-      const response = await handleAudioCommand(guildId, userId, client, MIMIMI_DIR);
+      const response = await handleAudioCommand(guild_id, userId, client, MIMIMI_DIR);
       res.send(response);
       return;
     }
@@ -189,7 +212,7 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
       const offender = data.options[0]?.value as string;
       const violation = data.options[1]?.value as ViolationType;
 
-      await handleShot(res, offender, violation);
+      await handleShot(guild_id, client, res, offender, violation);
       return;
     }
 
@@ -365,7 +388,7 @@ app.post('/interactions', verifyKeyMiddleware(publicKey()), async function (req:
       const offender = componentId.split('=')[1]?.split(',')[0] as string;
       const violation = componentId.split(',')[1]?.split('=')[1] as ViolationType;
 
-      await handleShot(res, offender, violation);
+      await handleShot(guild_id, client, res, offender, violation);
 
       await deletePreviousMessage(req.body.token, req.body.message.id);
 

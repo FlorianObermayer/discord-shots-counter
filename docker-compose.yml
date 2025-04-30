@@ -14,7 +14,9 @@ services:
       - APP_ID=${APP_ID}
       - DISCORD_TOKEN=${DISCORD_TOKEN}
       - PUBLIC_KEY=${PUBLIC_KEY}
-      - DB_PATH=/app/data/database.db
+      - DB_PATH=/app/data
+      - LLM_API_KEY=${LLM_API_KEY}
+      - DEFAULT_MEME_API_QUERY=${DEFAULT_MEME_API_QUERY}
     volumes:
       - shots_db_data:/app/data:nocopy  # Named volume with nocopy option
     user: "1001:1001"  # Matches the UID/GID in Dockerfile

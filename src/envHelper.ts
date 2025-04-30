@@ -1,3 +1,5 @@
+import path from 'path';
+
 export function verifyEnv() {
   appId();
   discordToken();
@@ -10,15 +12,27 @@ export function isTestEnvironment() {
 }
 
 export function databasePath() {
-  return process.env['DB_PATH'] || './database.db';
+  return process.env['DB_PATH'] || './';
+}
+
+export function databaseFile() {
+  return path.join(databasePath(), 'database.db');
+}
+
+export function cacheFolder() {
+  return path.join(databasePath(), '.cache');
 }
 
 export function mediaPath() {
   return process.env['MEDIA_PATH'] || './media';
 }
 
-export function appId(): string {
+export function appId() {
   return ensureEnv('APP_ID');
+}
+
+export function llmApiKey() {
+  return process.env['LLM_API_KEY'];
 }
 
 export function discordToken() {
@@ -31,6 +45,10 @@ export function port() {
 
 export function publicKey() {
   return ensureEnv('PUBLIC_KEY');
+}
+
+export function defaultMemeAPIQuery() {
+  return process.env['DEFAULT_MEME_API_QUERY'];
 }
 
 function ensureEnv(envName: string): string {

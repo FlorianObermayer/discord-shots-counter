@@ -5,4 +5,5 @@ database.db
 .env.development
 .env.production
 .DS_Store
-/media/audio/memes/
+/media/audio/memes
+/.cache

@@ -1,7 +1,7 @@
-import { getUsernameFromId } from './utils.js';
+import { getUsernameFromId } from './utils';
 
 class UsernameCache {
-    cache: Map<string, string>;
+    private cache: Map<string, string>;
     constructor() {
         this.cache = new Map();
     }
